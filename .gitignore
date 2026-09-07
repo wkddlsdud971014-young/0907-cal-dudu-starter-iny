@@ -6,3 +6,8 @@ dist/
 !.env.example
 *.bak
 *.tsbuildinfo
+
+# 키를 채워 넣는 개인 파일. 양식(.example.sh)만 저장소에 둔다.
+secrets.local.sh
+scripts/secrets.local.sh
+*.local.sh
