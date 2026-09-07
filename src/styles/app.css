@@ -1,0 +1,366 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f9f9f9;
+  color: #333;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.mode-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #007bff;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.mode-badge.local {
+  background: #6c757d;
+}
+
+.mode-badge.supabase {
+  background: #28a745;
+}
+
+.reference-time {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.role-selector {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.role-selector button {
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  background: white;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.role-selector button.active {
+  border-color: #007bff;
+  background: #007bff;
+  color: white;
+  font-weight: bold;
+}
+
+.role-selector button:hover:not(.active) {
+  border-color: #007bff;
+}
+
+/* 표 스타일 */
+.slots-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  overflow-x: auto;
+}
+
+.slots-table thead {
+  background: #f0f0f0;
+}
+
+.slots-table th,
+.slots-table td {
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #ddd;
+}
+
+.slots-table th {
+  font-weight: bold;
+  background: #f0f0f0;
+  position: sticky;
+  top: 0;
+}
+
+.slots-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.slot-checkbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.slot-button {
+  padding: 8px 12px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.slot-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.slot-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.slot-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.slot-status.available {
+  background: #d4edda;
+  color: #155724;
+}
+
+.slot-status.confirmed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* 버튼 */
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #218838;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 폼 */
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+}
+
+/* 메시지 */
+.alert {
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid #ddd;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border-left-color: #28a745;
+}
+
+.alert-error {
+  background: #f8d7da;
+  color: #721c24;
+  border-left-color: #dc3545;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border-left-color: #17a2b8;
+}
+
+.alert-warning {
+  background: #fff3cd;
+  color: #856404;
+  border-left-color: #ffc107;
+}
+
+/* 목록 */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list li {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list li:hover {
+  background: #f9f9f9;
+  border-color: #999;
+}
+
+/* 그리드 */
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .role-selector {
+    width: 100%;
+  }
+
+  .slots-table {
+    font-size: 12px;
+  }
+
+  .slots-table th,
+  .slots-table td {
+    padding: 8px;
+  }
+}
+
+/* 가로 스크롤 컨테이너 */
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+/* 로딩 상태 */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
