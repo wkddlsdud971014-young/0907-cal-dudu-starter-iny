@@ -139,7 +139,6 @@ export class OperationManager {
 
       // 트랜잭션: 슬롯 마감 + 요청 확정 + 영향받은 다른 요청 갱신
       const affectedRequests: string[] = [];
-      const dbSlots = this.db.getState().slots;
 
       this.db.beginTransaction();
 
@@ -160,6 +159,7 @@ export class OperationManager {
 
         // 현재 version에서 모든 후보가 마감된 요청만 needs_reselection으로 갱신
         const allRequests = this.db.getAllRequests();
+        const updatedSlots = this.db.getState().slots;
         allRequests.forEach(otherRequest => {
           if (otherRequest.id === requestId) return;
           if (otherRequest.status === 'confirmed') return;
@@ -175,7 +175,7 @@ export class OperationManager {
           if (hasConfirmedSlot) {
             // 현재 version에서 available 슬롯이 남아있는지 확인
             const hasAvailable = otherCurrentCandidates.some(c => {
-              const slot = dbSlots[c.slotId];
+              const slot = updatedSlots[c.slotId];
               return slot && slot.status === 'available';
             });
 

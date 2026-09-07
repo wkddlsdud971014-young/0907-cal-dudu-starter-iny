@@ -227,7 +227,7 @@ describe('OperationManager', () => {
 
       const c02_req2_final = db.getRequest(c02_r2.requestId!);
       expect(c02_req2_final?.status).toBe('confirmed');
-      expect(c02_req2_final?.confirmedSlotId).toBe('2026-09-09:am');
+      expect(c02_req2_final?.confirmedSlotId).toBe('2026-09-10:am');
     });
   });
 });
