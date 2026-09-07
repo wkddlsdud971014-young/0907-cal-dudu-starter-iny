@@ -26,6 +26,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [tab, setTab] = useState<'manage' | 'calendar'>('manage');
   // uid 는 사람이 못 읽는다. 어드민 화면에서만 이메일로 바꿔 보여준다.
   const [customerLabels, setCustomerLabels] = useState<Record<string, string>>({});
+  // 확정한 예약이 캘린더에 들어갔는지. 블루프린트에서 비어 있던 어드민 쪽 접점.
+  const [calendarResults, setCalendarResults] = useState<Record<string, { link?: string; error?: string }>>({});
 
   // 표시용 이름. 이메일을 못 구하면 uid 앞부분만 보여 표가 밀리지 않게 한다.
   const nameOf = (customerId: string) =>
@@ -60,9 +62,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
       // 이메일 표시는 곁들이는 정보다. 실패해도 uid 로 보이면 되고 확정은 그대로 된다.
       try {
-        setCustomerLabels(await backend.getCustomerLabels());
+        const [labels, cal] = await Promise.all([
+          backend.getCustomerLabels(),
+          backend.getCalendarResults(),
+        ]);
+        setCustomerLabels(labels);
+        setCalendarResults(cal);
       } catch {
         setCustomerLabels({});
+        setCalendarResults({});
       }
     } catch (err: any) {
       setError(err?.message || String(err));
@@ -302,6 +310,48 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
                   {new Date(currentRequest.request.confirmedAt!).toLocaleString()}
                 </div>
               )}
+
+              {/* 확정 뒤에 실제로 무슨 일이 일어났는지 어드민에게 돌려준다.
+                  As-is 에서는 확정 버튼을 누른 뒤가 화면에서 통째로 비어 있었다. */}
+              {currentRequest.request.status === 'confirmed' && (() => {
+                const cal = calendarResults[currentRequest.request.id];
+                if (cal?.link) {
+                  return (
+                    <div style={{ padding: '12px 14px', background: '#eef3fb', border: '1px solid #c7d6ef', borderRadius: '4px' }}>
+                      <strong style={{ fontSize: '14px' }}>확정 후 처리</strong>
+                      <ul style={{ margin: '8px 0 10px', paddingLeft: '18px', fontSize: '13px', lineHeight: 1.7 }}>
+                        <li>운영자 캘린더에 일정 생성됨</li>
+                        <li>{nameOf(currentRequest.request.customerId)} 에게 초대 메일 발송됨</li>
+                      </ul>
+                      <a
+                        className="btn btn-secondary"
+                        href={cal.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-block', textDecoration: 'none', padding: '6px 12px', fontSize: '13px' }}
+                      >
+                        캘린더에서 보기
+                      </a>
+                    </div>
+                  );
+                }
+                if (cal?.error) {
+                  return (
+                    <div className="alert alert-error">
+                      <strong>확정은 저장됐지만 캘린더 등록에 실패했습니다.</strong>
+                      <br />
+                      <span style={{ fontSize: '12px' }}>{cal.error}</span>
+                      <br />
+                      <span style={{ fontSize: '12px' }}>고객에게 초대 메일이 가지 않았습니다. 직접 안내가 필요합니다.</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ padding: '10px 14px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', color: '#666' }}>
+                    캘린더 등록 결과를 아직 받지 못했습니다. 잠시 후 새로고침하세요.
+                  </div>
+                );
+              })()}
 
               {currentRequest.request.status !== 'confirmed' && (
                 <button

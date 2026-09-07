@@ -52,6 +52,31 @@ async function restGet(path: string, serviceKey: string, supabaseUrl: string) {
   return res.json();
 }
 
+// 결과를 확정 행에 되돌려 적는다. 어드민 화면이 이걸 읽어
+// "캘린더에 갔는지"를 사람이 확인할 수 있게 된다.
+// 여기서 실패해도 일정 자체는 이미 만들어졌으므로 조용히 넘어간다.
+async function writeBack(
+  confirmationId: string,
+  patch: Record<string, string | null>,
+  serviceKey: string,
+  supabaseUrl: string
+) {
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/confirmations?id=eq.${confirmationId}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(patch),
+    });
+  } catch (e) {
+    console.error('결과 기록 실패(일정은 생성됨):', e);
+  }
+}
+
 Deno.serve(async req => {
   try {
     // 웹훅 위조를 막는다. DB 트리거가 같은 값을 헤더로 보낸다.
@@ -131,13 +156,38 @@ Deno.serve(async req => {
       attendeeEmails: customerEmail ? [customerEmail] : [],
     });
 
+    if (record.id) {
+      await writeBack(
+        record.id,
+        { calendar_link: result.htmlLink ?? null, calendar_error: null },
+        serviceKey,
+        supabaseUrl
+      );
+    }
+
     return new Response(
       JSON.stringify({ ok: true, created: result.created, link: result.htmlLink }),
       { headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    // 실패를 성공으로 숨기지 않는다. 로그와 응답 모두에 남긴다.
+    // 실패를 성공으로 숨기지 않는다. 로그와 응답, 그리고 어드민 화면 모두에 남긴다.
     console.error('on-confirmation 실패:', err);
+
+    try {
+      const payload = await req.clone().json().catch(() => null);
+      const id = payload?.record?.id;
+      if (id) {
+        await writeBack(
+          id,
+          { calendar_link: null, calendar_error: String(err).slice(0, 500) },
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+          Deno.env.get('SUPABASE_URL') ?? ''
+        );
+      }
+    } catch (_) {
+      // 기록조차 실패하면 로그만 남기고 넘어간다.
+    }
+
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

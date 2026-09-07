@@ -34,6 +34,9 @@ export interface Backend {
   // 고객 자신의 진행 이력. 어드민 전용 getLogs 와 달리 본인 것만 돌아온다.
   // 권한이 없거나 정책이 아직 없으면 빈 배열이라 화면은 그대로 뜬다.
   getMyLogs(customerId: string): Promise<OperationLog[]>;
+  // 확정 건이 캘린더에 실제로 들어갔는지. requestId → 결과.
+  // 어드민이 자기가 누른 확정의 뒷일을 화면에서 확인하는 데 쓴다.
+  getCalendarResults(): Promise<Record<string, { link?: string; error?: string }>>;
   // 고객 식별자를 사람이 읽을 이름으로 바꾸는 표. 어드민 화면 표시용이다.
   // 로컬 모드는 고객 코드가 이미 'C01' 이라 빈 표를 준다.
   getCustomerLabels(): Promise<Record<string, string>>;
@@ -79,6 +82,11 @@ export class LocalBackend implements Backend {
   }
 
   async getCustomerLabels() {
+    return {};
+  }
+
+  // 로컬 모드에는 캘린더 연동이 없다.
+  async getCalendarResults() {
     return {};
   }
 
@@ -283,6 +291,30 @@ export class SupabaseBackend implements Backend {
     // 로그는 어드민만 읽을 수 있다. 권한이 없으면 화면을 막지 말고 빈 목록으로 둔다.
     if (error) return [];
     return ((data as unknown as LogRow[] | null) || []).map(toLog);
+  }
+
+  // sql/05_calendar_link.sql 로 열이 생긴 뒤에만 값이 온다.
+  // 열이 없거나 권한이 없으면 빈 표를 돌려 화면은 그대로 뜬다.
+  async getCalendarResults(): Promise<Record<string, { link?: string; error?: string }>> {
+    const { data, error } = await this.client()
+      .from('confirmations')
+      .select('request_id, calendar_link, calendar_error');
+    if (error) return {};
+
+    const map: Record<string, { link?: string; error?: string }> = {};
+    (
+      (data as unknown as Array<{
+        request_id: string;
+        calendar_link: string | null;
+        calendar_error: string | null;
+      }> | null) || []
+    ).forEach(row => {
+      map[row.request_id] = {
+        link: row.calendar_link ?? undefined,
+        error: row.calendar_error ?? undefined,
+      };
+    });
+    return map;
   }
 
   // RLS 가 본인 신청에 달린 기록만 내려준다. sql/03_customer_logs.sql 참고.

@@ -5,7 +5,6 @@ import { decideRequestStatus } from '../utils/decide';
 import { TIME_SLOTS } from '../utils/constants';
 import type { Backend } from '../utils/backend';
 import { slotToEvent, googleCalendarUrl, downloadIcs } from '../utils/calendar';
-import { buildConfirmationMail, gmailComposeUrl, mailtoUrl } from '../utils/mail';
 import { RESPONSE_SLA_HOURS, deadlineView, elapsedLabel, shortKst } from '../utils/policy';
 import type { OperationLog } from '../types';
 
@@ -287,7 +286,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const event = slotToEvent(slot, customerId);
     if (!event) return null;
 
-    const mail = buildConfirmationMail(slot, customerId);
 
     return (
       <div style={{ marginTop: '10px' }}>
@@ -307,29 +305,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         >
           캘린더 파일(.ics) 내려받기
         </button>
-        {mail && (
-          <>
-            <a
-              className="btn btn-secondary"
-              href={gmailComposeUrl(mail)}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-block', marginRight: '8px', textDecoration: 'none' }}
-            >
-              Gmail로 알리기
-            </a>
-            <a
-              className="btn btn-secondary"
-              href={mailtoUrl(mail)}
-              style={{ display: 'inline-block', textDecoration: 'none' }}
-            >
-              메일 앱으로 알리기
-            </a>
-          </>
-        )}
         <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
-          일정 길이는 1시간으로 넣습니다. 예약은 날짜와 시간대로만 잡히고 소요시간은 계산하지 않습니다.
-          메일은 앱이 직접 보내지 않고 내용이 채워진 작성 화면을 엽니다. 받는 사람은 직접 넣으세요.
+          확정되면 초대 메일이 이미 발송됩니다. 아래 버튼은 다른 캘린더 앱에 직접 넣고 싶을 때만 쓰세요.
+          일정 길이는 1시간이며, 예약은 날짜와 시간대로만 잡습니다.
         </div>
       </div>
     );
@@ -385,7 +363,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         <div>
           <h3>슬롯 선택 (1~3개)</h3>
           <p style={{ color: '#666', fontSize: '14px' }}>
-            원하는 슬롯을 선택하고 제출하세요. 선택 순서가 희망 우선순위입니다.
+            원하는 슬롯을 최대 3개까지 고르세요. 먼저 고른 것이 1순위이고, 순위는 아래 목록에 표시됩니다.
           </p>
           <SlotTable
             slots={slots}
@@ -403,7 +381,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 return (
                   <li key={slotId}>
                     <span>
-                      {idx + 1}. {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
+                      <b style={{
+                        display: 'inline-block', minWidth: '52px', marginRight: '8px',
+                        padding: '1px 7px', fontSize: '12px',
+                        background: idx === 0 ? '#2446ad' : '#dde3ee',
+                        color: idx === 0 ? '#fff' : '#333',
+                      }}>{idx + 1}순위</b>
+                      {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
                     </span>
                     <button
                       className="btn btn-secondary"
@@ -444,7 +428,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 return (
                   <li key={slotId}>
                     <span>
-                      {idx + 1}. {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
+                      <b style={{
+                        display: 'inline-block', minWidth: '52px', marginRight: '8px',
+                        padding: '1px 7px', fontSize: '12px',
+                        background: idx === 0 ? '#2446ad' : '#dde3ee',
+                        color: idx === 0 ? '#fff' : '#333',
+                      }}>{idx + 1}순위</b>
+                      {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
                     </span>
                   </li>
                 );
@@ -503,7 +493,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     return (
                       <li key={c.id}>
                         <span>
-                          {cidx + 1}. {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
+                          <b style={{
+                            display: 'inline-block', minWidth: '52px', marginRight: '8px',
+                            padding: '1px 7px', fontSize: '12px',
+                            background: cidx === 0 ? '#2446ad' : '#dde3ee',
+                            color: cidx === 0 ? '#fff' : '#333',
+                          }}>{cidx + 1}순위</b>
+                          {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
                           {' '}
                           <span style={{ marginLeft: '10px', fontSize: '12px', color: isAvailable ? '#28a745' : '#dc3545' }}>
                             {isAvailable ? '(가능)' : '(마감)'}
@@ -628,7 +624,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 return (
                   <li key={slotId}>
                     <span>
-                      {idx + 1}. {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
+                      <b style={{
+                        display: 'inline-block', minWidth: '52px', marginRight: '8px',
+                        padding: '1px 7px', fontSize: '12px',
+                        background: idx === 0 ? '#2446ad' : '#dde3ee',
+                        color: idx === 0 ? '#fff' : '#333',
+                      }}>{idx + 1}순위</b>
+                      {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
                     </span>
                     <button
                       className="btn btn-secondary"
