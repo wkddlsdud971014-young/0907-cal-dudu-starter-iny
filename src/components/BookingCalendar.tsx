@@ -14,6 +14,8 @@ interface RequestView {
 interface BookingCalendarProps {
   slots: Record<string, Slot>;
   requests: RequestView[];
+  // uid → 이메일. 어드민만 구할 수 있고, 없으면 uid 앞부분으로 대체된다.
+  customerLabels?: Record<string, string>;
 }
 
 interface CellInfo {
@@ -27,8 +29,13 @@ function shortLabel(value: string): string {
   return value.length > 12 ? `${value.slice(0, 8)}…` : value;
 }
 
-export const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, requests }) => {
+export const BookingCalendar: React.FC<BookingCalendarProps> = ({
+  slots,
+  requests,
+  customerLabels = {},
+}) => {
   const dates = getAllDates();
+  const nameOf = (customerId: string) => customerLabels[customerId] || shortLabel(customerId);
 
   // 슬롯별로 확정 1건과 대기 N건을 센다.
   const cells: Record<string, CellInfo> = {};
@@ -102,7 +109,7 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, request
                         <span>
                           <strong>확정</strong>
                           <br />
-                          <span style={{ fontSize: '12px' }}>{shortLabel(confirmed)}</span>
+                          <span style={{ fontSize: '12px' }}>{nameOf(confirmed)}</span>
                         </span>
                       ) : cell?.pendingCount ? (
                         <span style={{ fontSize: '12px' }}>대기 {cell.pendingCount}건</span>

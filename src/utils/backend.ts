@@ -31,6 +31,9 @@ export interface Backend {
   getCustomerStatus(customerId: string): Promise<RequestView[]>;
   getAdminRequests(): Promise<RequestView[]>;
   getLogs(): Promise<OperationLog[]>;
+  // 고객 식별자를 사람이 읽을 이름으로 바꾸는 표. 어드민 화면 표시용이다.
+  // 로컬 모드는 고객 코드가 이미 'C01' 이라 빈 표를 준다.
+  getCustomerLabels(): Promise<Record<string, string>>;
   submitRequest(customerId: string, slotIds: string[], operationId: string): Promise<MutationResult>;
   confirmRequest(
     requestId: string,
@@ -70,6 +73,10 @@ export class LocalBackend implements Backend {
 
   async getLogs() {
     return this.db.getState().logs || [];
+  }
+
+  async getCustomerLabels() {
+    return {};
   }
 
   async submitRequest(customerId: string, slotIds: string[], operationId: string) {
@@ -266,6 +273,18 @@ export class SupabaseBackend implements Backend {
     // 로그는 어드민만 읽을 수 있다. 권한이 없으면 화면을 막지 말고 빈 목록으로 둔다.
     if (error) return [];
     return ((data as unknown as LogRow[] | null) || []).map(toLog);
+  }
+
+  async getCustomerLabels(): Promise<Record<string, string>> {
+    // 어드민이 아니면 함수가 막는다. 그때는 표시만 uid 로 남기고 화면은 그대로 둔다.
+    const { data, error } = await this.client().rpc('admin_customer_emails');
+    if (error) return {};
+
+    const map: Record<string, string> = {};
+    ((data as unknown as Array<{ id: string; email: string }> | null) || []).forEach(row => {
+      if (row?.id && row?.email) map[row.id] = row.email;
+    });
+    return map;
   }
 
   async submitRequest(customerId: string, slotIds: string[], operationId: string) {

@@ -23,6 +23,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'manage' | 'calendar'>('manage');
+  // uid 는 사람이 못 읽는다. 어드민 화면에서만 이메일로 바꿔 보여준다.
+  const [customerLabels, setCustomerLabels] = useState<Record<string, string>>({});
+
+  // 표시용 이름. 이메일을 못 구하면 uid 앞부분만 보여 표가 밀리지 않게 한다.
+  const nameOf = (customerId: string) =>
+    customerLabels[customerId] ||
+    (customerId.length > 12 ? `${customerId.slice(0, 8)}…` : customerId);
 
   // 확정 실패 후 다시 누를 때 같은 작업 ID를 보내야 서버가 중복 확정을 걸러낸다.
   // 대상(요청·슬롯)이 바뀌면 다른 작업이므로 새로 발급한다.
@@ -39,14 +46,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
   const loadData = async () => {
     try {
-      const [nextSlots, nextRequests, nextLogs] = await Promise.all([
+      const [nextSlots, nextRequests, nextLogs, nextLabels] = await Promise.all([
         backend.getSlots(),
         backend.getAdminRequests(),
         backend.getLogs(),
+        backend.getCustomerLabels(),
       ]);
       setSlots(nextSlots);
       setRequests(nextRequests);
       setLogs(nextLogs);
+      setCustomerLabels(nextLabels);
       setError('');
     } catch (err: any) {
       setError(err?.message || String(err));
@@ -121,7 +130,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {tab === 'calendar' && <BookingCalendar slots={slots} requests={requests} />}
+      {tab === 'calendar' && (
+        <BookingCalendar slots={slots} requests={requests} customerLabels={customerLabels} />
+      )}
 
       {tab === 'manage' && (
       <>
@@ -148,7 +159,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
                   }}
                 >
                   <div>
-                    <strong>#{idx + 1}</strong> {item.request.customerId} (v
+                    <strong>#{idx + 1}</strong> {nameOf(item.request.customerId)} (v
                     {item.request.version})
                     <br />
                     <span style={{ fontSize: '12px', color: '#666' }}>
@@ -176,7 +187,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
             <div style={{ padding: '16px', background: 'white', border: '1px solid #ddd', borderRadius: '4px' }}>
               <div className="form-group">
                 <label>고객 코드</label>
-                <input type="text" value={currentRequest.request.customerId} disabled />
+                <input type="text" value={nameOf(currentRequest.request.customerId)} disabled />
+                {customerLabels[currentRequest.request.customerId] && (
+                  <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                    ID: {currentRequest.request.customerId}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
