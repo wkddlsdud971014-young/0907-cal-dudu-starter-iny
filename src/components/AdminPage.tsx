@@ -28,6 +28,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [customerLabels, setCustomerLabels] = useState<Record<string, string>>({});
   // 확정한 예약이 캘린더에 들어갔는지. 블루프린트에서 비어 있던 어드민 쪽 접점.
   const [calendarResults, setCalendarResults] = useState<Record<string, { link?: string; error?: string }>>({});
+  // 확정 직후 결과를 한 번에 보여주는 요약. 캘린더 등록은 서버가 비동기로 처리하므로
+  // 링크가 도착할 때까지 몇 번 더 조회한다.
+  const [summary, setSummary] = useState<{
+    customer: string;
+    slotId: string;
+    confirmedAt: string;
+    cal: { link?: string; error?: string } | 'pending';
+  } | null>(null);
 
   // 표시용 이름. 이메일을 못 구하면 uid 앞부분만 보여 표가 밀리지 않게 한다.
   const nameOf = (customerId: string) =>
@@ -106,10 +114,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
       if (result.success) {
         confirmOpId.current = null;
-        setSuccess(`확정되었습니다! 영향받은 요청: ${result.affectedRequests?.length || 0}건`);
+        const requestId = selectedRequest;
+        const slotId = selectedSlotForConfirm;
+        const target = requests.find(r => r.request.id === requestId);
+
+        setSummary({
+          customer: target ? nameOf(target.request.customerId) : '알 수 없음',
+          slotId,
+          confirmedAt: new Date().toISOString(),
+          cal: 'pending',
+        });
+
         setSelectedRequest(null);
         setSelectedSlotForConfirm(null);
         setTimeout(() => loadData(), 500);
+        pollCalendar(requestId);
       } else {
         setError(result.error || '확정 실패');
       }
@@ -118,6 +137,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 캘린더 등록은 확정 저장 뒤 1초 안팎에 끝난다. 바로 조회하면 아직 비어 있어서
+  // 간격을 늘려가며 몇 번 더 본다. 끝내 못 받으면 모달이 그대로 말해 준다.
+  const pollCalendar = async (requestId: string) => {
+    for (const wait of [1200, 2000, 3000, 5000]) {
+      await new Promise(r => setTimeout(r, wait));
+      try {
+        const all = await backend.getCalendarResults();
+        setCalendarResults(all);
+        const hit = all[requestId];
+        if (hit?.link || hit?.error) {
+          setSummary(prev => (prev ? { ...prev, cal: hit } : prev));
+          return;
+        }
+      } catch {
+        // 조회 실패는 무시하고 다음 차례에 다시 본다.
+      }
+    }
+    setSummary(prev => (prev && prev.cal === 'pending' ? { ...prev, cal: {} } : prev));
   };
 
   const currentRequest = selectedRequest ? requests.find(r => r.request.id === selectedRequest) : null;
@@ -160,6 +199,100 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+
+      {/* 확정 직후 요약. 확정 사실, 언제로 잡혔는지, 캘린더와 메일이 나갔는지를
+          한 화면에 모은다. 이게 없으면 매번 캘린더를 열어 확인해야 한다. */}
+      {summary && (() => {
+        const slot = slots[summary.slotId];
+        const timeLabel = TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel ?? '';
+        const cal = summary.cal;
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="확정 결과"
+            onClick={() => setSummary(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(20,26,36,.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px', zIndex: 100,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'white', border: '1px solid #ccc', borderRadius: '6px',
+                width: 'min(460px, 100%)', padding: '24px', maxHeight: '86vh', overflowY: 'auto',
+              }}
+            >
+              <h3 style={{ margin: '0 0 4px' }}>확정 완료</h3>
+              <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#666' }}>
+                이 예약으로 처리된 내용입니다.
+              </p>
+
+              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: '14px' }}>
+                <dt style={{ color: '#666' }}>고객</dt>
+                <dd style={{ margin: 0 }}>{summary.customer}</dd>
+                <dt style={{ color: '#666' }}>일시</dt>
+                <dd style={{ margin: 0 }}><strong>{slot?.date} {timeLabel}</strong></dd>
+                <dt style={{ color: '#666' }}>확정 시각</dt>
+                <dd style={{ margin: 0 }}>{new Date(summary.confirmedAt).toLocaleString()}</dd>
+              </dl>
+
+              <hr style={{ margin: '18px 0', border: 0, borderTop: '1px solid #eee' }} />
+
+              {cal === 'pending' && (
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  캘린더 등록과 메일 발송을 확인하는 중입니다…
+                </div>
+              )}
+
+              {cal !== 'pending' && cal.link && (
+                <>
+                  <ul style={{ margin: '0 0 16px', paddingLeft: '18px', fontSize: '14px', lineHeight: 1.8 }}>
+                    <li>운영자 캘린더에 일정이 등록되었습니다</li>
+                    <li>{summary.customer} 에게 초대 메일이 발송되었습니다</li>
+                  </ul>
+                  <a
+                    className="btn btn-secondary"
+                    href={cal.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-block', textDecoration: 'none', marginRight: '8px' }}
+                  >
+                    캘린더에서 보기
+                  </a>
+                </>
+              )}
+
+              {cal !== 'pending' && cal.error && (
+                <div className="alert alert-error" style={{ marginBottom: '16px' }}>
+                  <strong>예약은 확정됐지만 캘린더 등록에 실패했습니다.</strong>
+                  <br />
+                  <span style={{ fontSize: '12px' }}>{cal.error}</span>
+                  <br />
+                  <span style={{ fontSize: '12px' }}>초대 메일이 가지 않았으니 직접 안내해 주세요.</span>
+                </div>
+              )}
+
+              {cal !== 'pending' && !cal.link && !cal.error && (
+                <div className="alert alert-warning" style={{ marginBottom: '16px' }}>
+                  캘린더 등록 결과를 아직 받지 못했습니다. 예약 확정 자체는 저장되었습니다.
+                  잠시 후 목록에서 다시 확인해 주세요.
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setSummary(null)}
+                style={{ marginTop: cal === 'pending' ? '16px' : 0 }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'calendar' && (
         <BookingCalendar slots={slots} requests={requests} customerLabels={customerLabels} />

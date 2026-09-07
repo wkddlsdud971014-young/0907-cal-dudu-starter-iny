@@ -518,8 +518,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                           }}>{cidx + 1}순위</b>
                           {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
                           {' '}
+                          {/* 마감된 후보는 언제 닫혔는지 함께 보여준다.
+                              시각은 슬롯에 적혀 있고 누구나 읽을 수 있다.
+                              누가 가져갔는지(confirmedBy)는 고객 식별 정보라 쓰지 않는다. */}
                           <span style={{ marginLeft: '10px', fontSize: '12px', color: isAvailable ? '#28a745' : '#dc3545' }}>
-                            {isAvailable ? '(가능)' : '(마감)'}
+                            {isAvailable
+                              ? '(가능)'
+                              : slot?.confirmedAt
+                                ? `(${shortKst(new Date(slot.confirmedAt))} 마감)`
+                                : '(마감)'}
                           </span>
                         </span>
                       </li>
