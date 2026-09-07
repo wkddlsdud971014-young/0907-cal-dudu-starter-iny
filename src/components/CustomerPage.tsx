@@ -463,7 +463,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
       {stage === 'view' && customerRequests.length > 0 && (
         <div>
-          <h3>내 신청 현황</h3>
+          {/* 새 상담 신청은 개별 카드가 아니라 화면 전체에 걸린 동작이라
+              제목 줄 오른쪽에 둔다. 카드 맨 아래에 있으면 스크롤해야 보인다. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+            <h3 style={{ margin: 0 }}>내 신청 현황</h3>
+            {customerRequests[customerRequests.length - 1]?.request.status === 'confirmed' && (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setStage('select');
+                  setSelectedSlots([]);
+                  setSuccess('');
+                  setError('');
+                }}
+              >
+                새 상담 신청하기
+              </button>
+            )}
+          </div>
           {customerRequests.map((item, idx) => (
             <div key={item.request.id} style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #ddd' }}>
               <h4>신청 #{item.request.version} (접수일: {new Date(item.request.createdAt).toLocaleString()})</h4>
@@ -523,23 +540,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 </>
               )}
 
-              {/* 확정이 끝난 뒤에는 새 상담을 신청할 수 있다.
-                  submit_request 는 received·needs_reselection 만 막고 confirmed 는 막지 않는다.
-                  서버가 이미 허용하는 길인데 화면에 입구가 없었다. */}
-              {item.request.status === 'confirmed' && idx === customerRequests.length - 1 && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setStage('select');
-                    setSelectedSlots([]);
-                    setSuccess('');
-                    setError('');
-                  }}
-                  style={{ marginTop: '12px' }}
-                >
-                  새 상담 신청하기
-                </button>
-              )}
 
               {item.request.status === 'needs_reselection' && idx === customerRequests.length - 1 && (
                 <button
