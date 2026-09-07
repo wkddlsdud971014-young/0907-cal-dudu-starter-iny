@@ -527,6 +527,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 </>
               )}
 
+              {/* 확정이 끝난 뒤에는 새 상담을 신청할 수 있다.
+                  submit_request 는 received·needs_reselection 만 막고 confirmed 는 막지 않는다.
+                  서버가 이미 허용하는 길인데 화면에 입구가 없었다. */}
+              {item.request.status === 'confirmed' && idx === customerRequests.length - 1 && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setStage('select');
+                    setSelectedSlots([]);
+                    setSuccess('');
+                    setError('');
+                  }}
+                  style={{ marginTop: '12px' }}
+                >
+                  새 상담 신청하기
+                </button>
+              )}
+
               {item.request.status === 'needs_reselection' && idx === customerRequests.length - 1 && (
                 <button
                   className="btn btn-warning"
