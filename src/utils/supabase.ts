@@ -43,16 +43,18 @@ export async function confirmRequestRPC(
 
 export async function resubmitRequestRPC(
   customerId: string,
-  previousRequestId: string,
-  newSlotIds: string[],
+  requestId: string,
+  slotIds: string[],
   operationId: string
 ) {
   if (!supabase) throw new Error('Supabase not initialized');
 
+  // 인자 이름은 SQL 함수 시그니처와 정확히 일치해야 한다.
+  // PostgREST가 이름으로 오버로드를 찾기 때문에, 다르면 PGRST202로 함수를 못 찾는다.
   const { data, error } = await supabase.rpc('resubmit_request', {
     p_customer_id: customerId,
-    p_previous_request_id: previousRequestId,
-    p_new_slot_ids: newSlotIds,
+    p_request_id: requestId,
+    p_slot_ids: slotIds,
     p_operation_id: operationId,
   });
 
@@ -66,7 +68,8 @@ export async function getSlots() {
   const { data, error } = await supabase
     .from('slots')
     .select('*')
-    .order('date,time_label');
+    .order('date', { ascending: true })
+    .order('time_label', { ascending: true });
 
   if (error) throw error;
   return data || [];

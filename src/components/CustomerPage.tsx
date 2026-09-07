@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { SlotTable } from './SlotTable';
 import type { Slot, Request, Candidate } from '../types';
-import { OperationManager } from '../utils/operations';
-import { DatabaseManager } from '../utils/database';
 import { decideRequestStatus } from '../utils/decide';
 import { TIME_SLOTS } from '../utils/constants';
+import type { Backend } from '../utils/backend';
 
 interface CustomerPageProps {
-  db: DatabaseManager;
-  mode: 'local' | 'supabase';
+  backend: Backend;
+  // 고객 코드는 App이 소유한다. Supabase 모드에서는 로그인한 사용자의 uid여야
+  // RPC의 auth.uid() 검증을 통과하므로, 그때는 onCustomerIdChange를 넘기지 않아 잠근다.
+  customerId: string;
+  onCustomerIdChange?: (value: string) => void;
 }
 
-export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
-  const [customerId, setCustomerId] = useState<string>('C01');
+export const CustomerPage: React.FC<CustomerPageProps> = ({
+  backend,
+  customerId,
+  onCustomerIdChange,
+}) => {
   const [stage, setStage] = useState<'select' | 'confirm' | 'view' | 'reselect'>('select');
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [slots, setSlots] = useState<Record<string, Slot>>({});
@@ -22,8 +27,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
-
-  const om = new OperationManager(db);
 
   const getRecommendedSlots = (previousRequest: Request, candidates: Candidate[]): string[] => {
     const previousCandidates = candidates.filter(c => c.requestId === previousRequest.id);
@@ -71,12 +74,21 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
     loadData();
   }, [customerId]);
 
-  const loadData = () => {
-    const state = db.getState();
-    setSlots(state.slots);
-    const status = om.getCustomerStatus(customerId);
-    setCustomerRequests(status);
-    setError('');
+  const loadData = async () => {
+    let status: Awaited<ReturnType<Backend['getCustomerStatus']>>;
+    try {
+      const [nextSlots, nextStatus] = await Promise.all([
+        backend.getSlots(),
+        backend.getCustomerStatus(customerId),
+      ]);
+      setSlots(nextSlots);
+      setCustomerRequests(nextStatus);
+      status = nextStatus;
+      setError('');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+      return;
+    }
     setSuccess('');
 
     // 첫 로드인지 확인
@@ -119,7 +131,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
 
     try {
       const operationId = `submit-${customerId}-${Date.now()}`;
-      const result = await om.submitRequest(customerId, selectedSlots, operationId);
+      const result = await backend.submitRequest(customerId, selectedSlots, operationId);
 
       if (result.success) {
         setSuccess('신청이 완료되었습니다!');
@@ -149,7 +161,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
     try {
       const latest = customerRequests[customerRequests.length - 1];
       const operationId = `reselect-${latest.request.id}-${Date.now()}`;
-      const result = await om.resubmitRequest(
+      const result = await backend.resubmitRequest(
         customerId,
         latest.request.id,
         selectedSlots,
@@ -181,8 +193,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
   const checkSlotAvailability = () => {
     if (stage === 'confirm' && customerRequests.length > 0) {
       const latest = customerRequests[customerRequests.length - 1];
-      const currentState = db.getState();
-      const decision = decideRequestStatus(latest.request, currentState.candidates, currentState.slots);
+      const allCandidates = customerRequests.flatMap(item => item.candidates);
+      const decision = decideRequestStatus(latest.request, allCandidates, slots);
 
       if (decision.status !== 'ok') {
         setError('선택한 슬롯의 상태가 변경되었습니다. 다시 선택해주세요.');
@@ -201,10 +213,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
         <input
           type="text"
           value={customerId}
-          onChange={e => setCustomerId(e.target.value)}
+          onChange={e => onCustomerIdChange?.(e.target.value)}
           placeholder="C01"
-          disabled={stage === 'confirm'}
+          // Supabase 모드에서는 로그인 계정이 곧 고객 코드라 편집할 수 없다.
+          disabled={!onCustomerIdChange || stage === 'confirm'}
         />
+        {!onCustomerIdChange && (
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            로그인한 계정으로 신청합니다.
+          </div>
+        )}
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

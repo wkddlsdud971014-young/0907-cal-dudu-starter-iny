@@ -1,6 +1,8 @@
 node_modules/
 dist/
-.env
-.env.local
-.env.*.local
+# .env 로 시작하는 건 전부 제외하고 예시 파일만 되살린다.
+# 예전 규칙은 .env.local.bak 같은 사본을 못 걸러서 키가 커밋된 적이 있다.
+.env*
+!.env.example
+*.bak
 *.tsbuildinfo

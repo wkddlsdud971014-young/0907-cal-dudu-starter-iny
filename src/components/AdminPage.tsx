@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { SlotTable } from './SlotTable';
 import type { Slot, Request, Candidate, OperationLog } from '../types';
-import { OperationManager } from '../utils/operations';
-import { DatabaseManager } from '../utils/database';
 import { TIME_SLOTS } from '../utils/constants';
+import type { Backend } from '../utils/backend';
 
 interface AdminPageProps {
-  db: DatabaseManager;
-  mode: 'local' | 'supabase';
+  backend: Backend;
+  // Supabase 모드에서는 로그인한 어드민의 uid가 confirmations.admin_id로 기록된다.
+  adminId: string;
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ db }) => {
-  const [adminId] = useState<string>('ADMIN001');
+export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [slots, setSlots] = useState<Record<string, Slot>>({});
   const [requests, setRequests] = useState<
     Array<{ request: Request; candidates: Candidate[]; decision: any }>
@@ -23,19 +22,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ db }) => {
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  const om = new OperationManager(db);
-
   // 초기 로드
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const state = db.getState();
-    setSlots(state.slots);
-    setRequests(om.getAdminRequests());
-    setLogs(state.logs || []);
-    setError('');
+  const loadData = async () => {
+    try {
+      const [nextSlots, nextRequests, nextLogs] = await Promise.all([
+        backend.getSlots(),
+        backend.getAdminRequests(),
+        backend.getLogs(),
+      ]);
+      setSlots(nextSlots);
+      setRequests(nextRequests);
+      setLogs(nextLogs);
+      setError('');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+      return;
+    }
     setSuccess('');
   };
 
@@ -51,7 +57,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ db }) => {
 
     try {
       const operationId = `confirm-${selectedRequest}-${selectedSlotForConfirm}-${Date.now()}`;
-      const result = await om.confirmRequest(
+      const result = await backend.confirmRequest(
         selectedRequest,
         selectedSlotForConfirm,
         adminId,

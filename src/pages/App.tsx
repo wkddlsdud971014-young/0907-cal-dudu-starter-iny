@@ -4,9 +4,18 @@ import { AdminPage } from '../components/AdminPage';
 import { DatabaseManager } from '../utils/database';
 import { REFERENCE_TIME } from '../utils/constants';
 import { supabase, signInWithPassword, signOut, getCurrentUser } from '../utils/supabase';
+import { createBackend } from '../utils/backend';
 
 type Mode = 'local' | 'supabase';
 type Role = 'customer' | 'admin';
+
+// 어드민 판정은 app_metadata를 먼저 본다.
+// SQL의 confirm_request와 RLS 정책이 app_metadata.role만 신뢰하므로,
+// user_metadata만 보면 화면은 어드민인데 확정 RPC가 'Not authorized'로 막힌다.
+function readRole(user: any): Role {
+  const role = user?.app_metadata?.role ?? user?.user_metadata?.role;
+  return role === 'admin' ? 'admin' : 'customer';
+}
 
 const App: React.FC = () => {
   const [mode] = useState<Mode>(() => {
@@ -17,6 +26,9 @@ const App: React.FC = () => {
 
   const [role, setRole] = useState<Role>('customer');
   const [db] = useState(() => new DatabaseManager());
+  const [backend] = useState(() => createBackend(mode, db));
+  // 로컬 모드에서만 손으로 바꾸는 값. Supabase 모드에서는 로그인 uid를 쓴다.
+  const [customerId, setCustomerId] = useState('C01');
 
   // Supabase 모드 상태
   const [user, setUser] = useState<any>(null);
@@ -34,8 +46,7 @@ const App: React.FC = () => {
       const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
-          const role = session.user.user_metadata?.role || 'customer';
-          setUserRole(role);
+          setUserRole(readRole(session.user));
         } else {
           setUser(null);
           setUserRole(null);
@@ -52,8 +63,7 @@ const App: React.FC = () => {
         const user = await getCurrentUser();
         if (user) {
           setUser(user);
-          const role = user.user_metadata?.role || 'customer';
-          setUserRole(role);
+          setUserRole(readRole(user));
         }
       }
     } catch (err) {
@@ -71,8 +81,7 @@ const App: React.FC = () => {
 
       const result = await signInWithPassword(loginEmail, loginPassword);
       setUser(result.user);
-      const role = result.user.user_metadata?.role || 'customer';
-      setUserRole(role);
+      setUserRole(readRole(result.user));
       setLoginEmail('');
       setLoginPassword('');
     } catch (err: any) {
@@ -208,8 +217,9 @@ const App: React.FC = () => {
           <strong>Supabase 모드:</strong> 실제 데이터베이스와 인증이 적용됩니다.
         </div>
 
-        {userRole === 'customer' && <CustomerPage db={db} mode={mode} />}
-        {userRole === 'admin' && <AdminPage db={db} mode={mode} />}
+        {/* Supabase 모드에서는 고객 코드 = 로그인 uid. RPC가 auth.uid()와 대조한다. */}
+        {userRole === 'customer' && <CustomerPage backend={backend} customerId={user.id} />}
+        {userRole === 'admin' && <AdminPage backend={backend} adminId={user.id} />}
 
         <hr style={{ margin: '40px 0', borderColor: '#ddd' }} />
         <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', paddingBottom: '20px' }}>
@@ -270,8 +280,14 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {role === 'customer' && <CustomerPage db={db} mode={mode} />}
-      {role === 'admin' && <AdminPage db={db} mode={mode} />}
+      {role === 'customer' && (
+        <CustomerPage
+          backend={backend}
+          customerId={customerId}
+          onCustomerIdChange={setCustomerId}
+        />
+      )}
+      {role === 'admin' && <AdminPage backend={backend} adminId="ADMIN001" />}
 
       <hr style={{ margin: '40px 0', borderColor: '#ddd' }} />
       <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', paddingBottom: '20px' }}>
