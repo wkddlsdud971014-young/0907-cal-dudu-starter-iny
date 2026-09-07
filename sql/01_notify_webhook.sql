@@ -24,7 +24,10 @@ revoke all on app_config from anon, authenticated;
 -- ↓↓↓ 값을 바꿔서 실행하세요 ↓↓↓
 insert into app_config (key, value) values
   ('edge_url', 'https://<project_ref>.supabase.co/functions/v1/on-confirmation'),
-  ('webhook_secret', '<webhook_secret>')
+  ('webhook_secret', '<webhook_secret>'),
+  -- Edge Function 게이트웨이는 Authorization 헤더가 없으면 함수를 실행하기 전에 401 로 막는다.
+  -- 브라우저에 나가는 공개 키와 같은 값이라 비밀이 아니다. 진짜 검증은 webhook_secret 이 한다.
+  ('anon_key', '<anon_key>')
 on conflict (key) do update set value = excluded.value;
 -- ↑↑↑ 값을 바꿔서 실행하세요 ↑↑↑
 
@@ -38,9 +41,11 @@ as $$
 declare
   v_url text;
   v_secret text;
+  v_anon text;
 begin
   select value into v_url from app_config where key = 'edge_url';
   select value into v_secret from app_config where key = 'webhook_secret';
+  select value into v_anon from app_config where key = 'anon_key';
 
   if v_url is null or v_secret is null then
     -- 설정이 없으면 예약 저장 자체를 막지는 않는다. 알림만 건너뛴다.
@@ -53,6 +58,9 @@ begin
     url := v_url,
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
+      -- 게이트웨이 통과용. 이게 없으면 함수가 실행되기도 전에 401 로 막힌다.
+      'Authorization', 'Bearer ' || coalesce(v_anon, ''),
+      -- 위조 방지용. 실제 신뢰는 이 값이 만든다.
       'x-webhook-secret', v_secret
     ),
     body := jsonb_build_object(
