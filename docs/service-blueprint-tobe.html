@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>To-be 서비스 블루프린트</title>
+<style>*{box-sizing:border-box}body{margin:0}img{max-width:100%}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* 인쇄물처럼 흰 종이 한 가지로 고정한다.
+     발표 화면과 캡처에서 항상 같게 보여야 해서 다크 테마를 두지 않는다.
+     그래서 배경과 글자색을 전부 명시한다. */
+  :root{
+    color-scheme:light;
+    --ground:#ffffff;
+    --surface:#ffffff;
+    --surface-sunk:#f1f4f8;
+    --ink:#0b0f15;
+    --ink-soft:#232c37;
+    --ink-faint:#48525e;
+    --rule:#c9d1db;
+    --rule-strong:#8b96a4;
+    --accent:#16337f;
+    --accent-soft:#e7ecf8;
+    --warn:#9c3a17;
+    --warn-soft:#fbe8e0;
+    --wait:#71590f;
+    --wait-soft:#faf0d2;
+    --pick:#1a376e;
+    --pick-soft:#dde7f7;
+    --edit:#0c5647;
+    --edit-soft:#d8ece6;
+    --ship:#553192;
+    --ship-soft:#ece4f9;
+    --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1520px;margin:0 auto;padding:44px 24px 72px;}
+
+  /* ── header ── */
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 12px;
+  }
+  h1{
+    font-size:clamp(27px,4vw,38px);font-weight:700;letter-spacing:-.02em;
+    margin:0 0 10px;text-wrap:balance;line-height:1.25;
+  }
+  .lede{font-size:16px;color:var(--ink-soft);margin:0;max-width:62ch;}
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:22px;
+    padding-top:18px;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:13px;color:var(--ink-soft);
+  }
+  .meta b{color:var(--ink-soft);font-weight:500;}
+
+  /* ── pick callout ── */
+  .pick{
+    margin:34px 0 40px;padding:22px 24px;
+    background:var(--pick-soft);border-left:3px solid var(--pick);
+    display:grid;gap:10px;
+  }
+  .pick-tag{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--pick);font-weight:500;
+  }
+  .pick h2{font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em;}
+  .pick p{margin:0;font-size:14.5px;color:var(--ink-soft);max-width:70ch;}
+
+  h2.sec{
+    font-size:15px;font-weight:600;letter-spacing:.02em;margin:0 0 4px;
+  }
+  .sec-note{font-size:14px;color:var(--ink-soft);margin:0 0 16px;}
+
+  /* ── blueprint ── */
+  .scroller{overflow-x:auto;padding-bottom:6px;}
+  .bp{
+    display:grid;
+    grid-template-columns:104px repeat(6,minmax(0,1fr));
+    background:var(--rule);
+    gap:1px;
+    border:1px solid var(--rule);
+  }
+  .bp > *{background:var(--surface);padding:13px 14px;}
+  .rowlabel{
+    background:var(--surface-sunk);
+    font-size:13px;font-weight:600;color:var(--ink-soft);
+    display:flex;align-items:center;letter-spacing:.01em;
+  }
+  .colhead{background:var(--surface-sunk);display:grid;gap:3px;align-content:start;}
+  .colhead .n{font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+  .colhead .t{font-size:14.5px;font-weight:600;letter-spacing:-.01em;}
+  .colhead .d{font-family:var(--mono);font-size:12px;color:var(--ink-faint);}
+  .cell{font-size:13.6px;color:var(--ink-soft);line-height:1.6;}
+  .cell.none{color:var(--ink-faint);font-style:normal;}
+  code{font-family:var(--mono);font-size:12px;background:var(--surface-sunk);
+       padding:1px 4px;color:var(--ink);overflow-wrap:anywhere;}
+
+  @media(max-width:1180px){
+    .cell,.why{font-size:12.6px;}
+    .colhead .t{font-size:13px;}
+    .bp > *{padding:10px 10px;}
+  }
+
+  /* boundary lines — the point of a blueprint */
+  .line{
+    grid-column:1/-1;background:var(--surface-sunk);
+    padding:6px 12px;display:flex;align-items:center;gap:12px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);font-weight:500;
+  }
+  .line::after{content:"";flex:1;height:0;border-top:1px dashed var(--rule-strong);}
+  .line.solid::after{border-top-style:solid;}
+
+  /* emotion chips */
+  .emo{display:flex;align-items:center;gap:7px;}
+  .emo b{
+    font-family:var(--mono);font-size:15px;font-weight:500;
+    width:26px;height:26px;display:grid;place-items:center;
+    background:var(--surface-sunk);color:var(--ink);
+  }
+  .emo.low b{background:var(--warn-soft);color:var(--warn);font-weight:600;}
+  .emo span{font-size:12.5px;color:var(--ink-faint);}
+
+  /* markers */
+  .mk{display:inline-flex;align-items:baseline;gap:5px;font-size:12.5px;font-weight:600;}
+  .mk.fail{color:var(--warn);}
+  .mk.wait{color:var(--wait);}
+  .cell.fail{background:var(--warn-soft);}
+  .cell.wait{background:var(--wait-soft);}
+
+  /* selected column emphasis */
+  .bp .sel{box-shadow:inset 0 0 0 2px var(--pick);}
+  .colhead.sel .t{color:var(--pick);}
+
+  /* cells we are going to change */
+  .cell.edit{background:var(--edit-soft);box-shadow:inset 4px 0 0 var(--edit);}
+  .cell.edit.sel{box-shadow:inset 4px 0 0 var(--edit),inset 0 0 0 2px var(--pick);}
+  .tag{
+    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--edit);font-weight:600;margin-bottom:5px;
+  }
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 20px;margin:14px 0 0;
+    font-size:13.5px;color:var(--ink-soft);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .swatch{width:13px;height:13px;flex:none;}
+
+  /* ── to-be structure ── */
+  .flow{display:grid;gap:11px;margin-top:14px;}
+  .flow-row{
+    display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:start;
+    background:var(--surface);border:1px solid var(--rule);padding:15px 17px;
+  }
+  .flow-row.new{border-color:var(--ship);background:var(--ship-soft);}
+  .flow-row.gone{opacity:.62;}
+  .lane{
+    font-size:12.5px;font-weight:600;color:var(--ship);padding-top:3px;line-height:1.45;
+  }
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:13.8px;}
+  .node{
+    background:var(--surface-sunk);border:1px solid var(--rule);
+    padding:5px 11px;color:var(--ink);overflow-wrap:anywhere;
+  }
+  .flow-row.new .node{background:var(--surface);border-color:var(--ship);}
+  .node.ghost{
+    border-style:dashed;color:var(--warn);border-color:var(--warn);
+    background:transparent;
+  }
+  .arrow{font-family:var(--mono);color:var(--ink-soft);font-size:12.5px;}
+  .flow-row.new .arrow{color:var(--ship);}
+  .why{
+    grid-column:2;margin:9px 0 0;font-size:13.6px;color:var(--ink-soft);line-height:1.55;
+  }
+  .why b{color:var(--ink);font-weight:600;}
+  .stamp{
+    display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;padding:2px 7px;margin-left:2px;
+    background:var(--ship);color:var(--surface);
+  }
+  .stamp{color:#fff;}
+
+  /* To-be 판에서만 초록 대신 보라를 쓴다. 초록은 As-is 의 "고칠 곳",
+     보라는 "실제로 만들어 동작을 확인한 곳"으로 뜻이 다르다. */
+  .tobe .cell.edit{background:var(--ship-soft);box-shadow:inset 4px 0 0 var(--ship);}
+  .tobe .cell.edit.sel{box-shadow:inset 4px 0 0 var(--ship),inset 0 0 0 2px var(--pick);}
+  .tobe .tag{color:var(--ship);}
+  .tobe .emo.up b{background:var(--ship-soft);color:var(--ship);}
+
+  /* 구현 여부 표시 */
+  .done{
+    display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    padding:1px 6px;margin-left:6px;background:var(--ship);color:#fff;vertical-align:middle;
+  }
+  .undone{
+    display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    padding:1px 6px;margin-left:6px;background:var(--rule-strong);color:#fff;vertical-align:middle;
+  }
+  .ship{display:grid;gap:12px;margin-top:14px;}
+  .ship-row{
+    display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;
+    background:var(--surface);border:1px solid var(--rule);padding:15px 18px;
+  }
+  .ship-row.extra{border-left:4px solid var(--ship);}
+  .ship-k{font-size:13.6px;font-weight:600;color:var(--ink);}
+  .ship-v{font-size:13.6px;color:var(--ink-soft);line-height:1.6;}
+  .ship-v em{font-style:normal;color:var(--ink-faint);display:block;margin-top:5px;font-size:12.8px;}
+
+  /* to-be emotion delta */
+  .emo.up b{background:var(--edit-soft);color:var(--edit);font-weight:600;}
+  .emo .was{
+    font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+    text-decoration:line-through;
+  }
+  .emo .to{font-family:var(--mono);font-size:12px;color:var(--ink-faint);}
+
+  /* ── findings ── */
+  .finds{display:grid;gap:14px;margin-top:14px;}
+  @media(min-width:760px){.finds{grid-template-columns:repeat(3,1fr);}}
+  .find{
+    background:var(--surface);border:1px solid var(--rule);
+    padding:18px 19px;display:grid;gap:8px;align-content:start;
+  }
+  .find .k{
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--warn);
+  }
+  .find h3{font-size:15px;font-weight:600;margin:0;letter-spacing:-.01em;line-height:1.4;}
+  .find p{margin:0;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+
+  /* ── evidence table ── */
+  table{border-collapse:collapse;width:100%;font-size:14px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top;}
+  th{
+    font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;border-bottom:1px solid var(--rule-strong);
+  }
+  td:first-child{color:var(--ink);font-weight:500;white-space:nowrap;}
+  td:last-child{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);white-space:nowrap;}
+  .tbl{background:var(--surface);border:1px solid var(--rule);overflow-x:auto;}
+  tr:last-child td{border-bottom:none;}
+
+  section{margin-top:46px;}
+  footer{
+    margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
+    font-size:13.5px;color:var(--ink-soft);max-width:74ch;
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <p class="eyebrow">Service Blueprint · To-be</p>
+  <h1>정보가 흐르는 방향만 바꾼다</h1>
+  <p class="lede">고정 규칙은 하나도 건드리지 않는다. 보라 칸이 실제로 만들어 동작까지 확인한 곳이고, 흰 칸은 그대로 둔다.</p>
+
+  <div class="meta">
+    <span><b>페르소나</b> 손지은 · 37세 · 서점 인수 준비</span>
+    <span><b>기간</b> 8/31 19:00 → 9/1 저녁 이후</span>
+    <span><b>마감</b> 9/8 기존 점주 인수인계 종료</span>
+    <span><b>기준</b> PRD.md 13–24행 · 현재 구현 코드</span>
+  </div>
+
+  <section>
+    <h2 class="sec">To-be 블루프린트</h2>
+    <p class="sec-note">
+      As-is와 같은 판이다. 초록 칸이 바뀌는 곳이고, 흰 칸은 그대로 둔다.
+      고정 규칙을 건드리지 않으므로 고객 행동의 뼈대와 여섯 단계는 유지된다.
+      <b>초록 칸은 모두 실제로 구현해 동작을 확인했다.</b>
+    </p>
+
+    <div class="scroller">
+      <div class="bp tobe">
+
+        <div class="rowlabel" style="background:var(--surface);"></div>
+        <div class="colhead"><span class="n">①</span><span class="t">상담신청</span><span class="d">8/31 19:00</span></div>
+        <div class="colhead"><span class="n">②</span><span class="t">상태확인</span><span class="d">9/1 아침~낮</span></div>
+        <div class="colhead"><span class="n">③</span><span class="t">마감확인</span><span class="d">9/1 오후</span></div>
+        <div class="colhead"><span class="n">④</span><span class="t">일정 재확인</span><span class="d">9/1 오후~저녁</span></div>
+        <div class="colhead"><span class="n">⑤</span><span class="t">재선택 제출</span><span class="d">9/1 저녁</span></div>
+        <div class="colhead sel"><span class="n">⑥</span><span class="t">확정대기</span><span class="d">9/1 저녁~이후</span></div>
+
+        <!-- physical evidence -->
+        <div class="rowlabel">물리적 증거</div>
+        <div class="cell edit"><span class="tag">완료</span>슬롯표·최종 확인 화면에 <b>“9/1 19:00까지 회신” 안내</b> 추가</div>
+        <div class="cell edit"><span class="tag">완료</span>상태 카드 + <b>진행 타임라인</b>, 남은 시간</div>
+        <div class="cell">마감 표시, 재선택 경고, 추천 슬롯 3개 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell none">앱 바깥 — 개인 달력 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell edit"><span class="tag">완료</span>재선택 화면 + <b>회신 기한 재안내</b></div>
+        <div class="cell edit sel"><span class="tag">완료</span><b>접수 → 검토 대기</b> 타임라인, 경과 시간, 회신 기한</div>
+
+        <!-- customer actions -->
+        <div class="rowlabel">고객 행동</div>
+        <div class="cell">9/3 오후·9/4 오전을 1·2순위로 제출<div class="emo"><b>4</b><span>기대</span></div></div>
+        <div class="cell edit"><span class="tag">완료</span>앱을 열어 회신 기한과 경과 시간을 읽는다<div class="emo up"><b>3</b><span class="was">2</span><span class="to">→ 3</span></div></div>
+        <div class="cell">앱에서 두 후보의 마감 시각을 읽는다<div class="emo up"><b>3</b><span class="was">2</span><span class="to">→ 3</span></div></div>
+        <div class="cell">개인 일정에서 9/7 오후를 찾는다<div class="emo"><b>4</b><span>안도</span></div></div>
+        <div class="cell">9/7 오후로 재선택 제출<div class="emo up"><b>4</b><span class="was">3</span><span class="to">→ 4</span></div></div>
+        <div class="cell edit sel"><span class="tag">완료</span>기한을 확인하고 앱을 닫은 뒤 인수인계 자료 목록을 적는다<div class="emo up"><b>4</b><span class="was">2</span><span class="to">→ 4</span></div></div>
+
+        <div class="line solid">상호작용선</div>
+
+        <!-- frontstage -->
+        <div class="rowlabel">앱이 응답하는 것</div>
+        <div class="cell edit"><span class="tag">완료</span>“신청이 완료되었습니다” + <b>회신 기한</b></div>
+        <div class="cell edit"><span class="tag">완료</span>접수 8/31 19:00 → 검토 대기 · <b>경과 14시간</b> · 9/1 19:00까지 회신</div>
+        <div class="cell edit"><span class="tag">완료</span>마감 사실 + 추천 3개 + <b>타임라인에 마감 시각 기록</b></div>
+        <div class="cell none">응답 없음 — 이번 범위 밖</div>
+        <div class="cell edit"><span class="tag">완료</span>“재선택이 완료되었습니다” + <b>새 회신 기한</b></div>
+        <div class="cell edit sel"><span class="tag">완료</span>진행 단계와 남은 시간을 <b>항상 표시</b></div>
+
+        <div class="line">가시선 — 아래는 고객이 볼 수 없다</div>
+
+        <!-- backstage -->
+        <div class="rowlabel">어드민이 하는 일</div>
+        <div class="cell none">아직 모른다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell edit"><span class="tag">완료</span>목록이 <b>오래 기다린 순</b>으로 정렬되어 먼저 눈에 띈다</div>
+        <div class="cell">다른 고객을 그 슬롯에 확정한다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell none">관여 없음 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell none">아직 모른다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell edit sel"><span class="tag">완료</span><b>대기 시간 뱃지</b>를 보고 기한 전에 처리한다. 확정은 여전히 사람이 누른다</div>
+
+        <div class="line">내부 상호작용선</div>
+
+        <!-- support -->
+        <div class="rowlabel">시스템</div>
+        <div class="cell">신청·희망·실행기록 저장 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell edit"><span class="tag">완료</span><code>operation_logs</code>를 <b>본인 것만</b> 읽도록 연다</div>
+        <div class="cell">확정이 다른 신청을 재선택 필요로 바꾼다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell none">해당 없음</div>
+        <div class="cell">버전 2, 새 접수 순번, 이력 보존 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell edit sel"><span class="tag">완료</span>본인 이력 조회 + <b>확정 트리거 → 캘린더·초대 메일</b></div>
+
+        <!-- points -->
+        <div class="rowlabel">지점</div>
+        <div class="cell edit"><span class="tag">해소</span>기한이 있는 대기로 바뀐다</div>
+        <div class="cell edit"><span class="tag">해소</span>전달 통로가 생긴다</div>
+        <div class="cell edit"><span class="tag">완화</span>마감 경위가 기록으로 남는다</div>
+        <div class="cell none">—</div>
+        <div class="cell edit"><span class="tag">해소</span>두 번째 대기도 기한이 붙는다</div>
+        <div class="cell edit sel"><span class="tag">해소</span>앱을 열지 않아도 결과가 도착한다</div>
+
+      </div>
+    </div>
+
+    <p class="legend">
+      <span><i class="swatch" style="background:var(--ship)"></i>만들어서 동작까지 확인한 칸</span>
+      <span><i class="swatch" style="background:var(--rule-strong)"></i>그대로 두는 칸</span>
+      <span><i class="swatch" style="background:var(--pick)"></i>선택한 구간</span>
+    </p>
+    <p class="sec-note" style="margin-top:14px;">
+      To-be의 감정 점수는 관찰값이 아니라 <b>기대 효과 가설</b>이다.
+      ④는 앱 바깥이라 이번 범위에서 손대지 않으므로 그대로 두었다.
+    </p>
+  </section>
+
+
+</div>
+
+</body>
+</html>
