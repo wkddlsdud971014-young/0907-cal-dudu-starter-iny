@@ -25,6 +25,47 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
 
   const om = new OperationManager(db);
 
+  const getRecommendedSlots = (previousRequest: Request, candidates: Candidate[]): string[] => {
+    const previousCandidates = candidates.filter(c => c.requestId === previousRequest.id);
+    const previousDates = new Set(previousCandidates.map(c => {
+      const slot = slots[c.slotId];
+      return slot?.date;
+    }));
+    const previousTimes = new Set(previousCandidates.map(c => {
+      const slot = slots[c.slotId];
+      return slot?.timeLabel;
+    }));
+
+    const available = Object.values(slots).filter(s => s.status === 'available');
+    const recommended: string[] = [];
+
+    // 1순위: 원래 날짜, 다른 시간
+    for (const slot of available) {
+      if (previousDates.has(slot.date) && !previousTimes.has(slot.timeLabel)) {
+        recommended.push(slot.id);
+        if (recommended.length >= 3) return recommended;
+      }
+    }
+
+    // 2순위: 다른 날짜, 원래 시간
+    for (const slot of available) {
+      if (!previousDates.has(slot.date) && previousTimes.has(slot.timeLabel)) {
+        recommended.push(slot.id);
+        if (recommended.length >= 3) return recommended;
+      }
+    }
+
+    // 3순위: 나머지 가용 슬롯
+    for (const slot of available) {
+      if (!recommended.includes(slot.id)) {
+        recommended.push(slot.id);
+        if (recommended.length >= 3) return recommended;
+      }
+    }
+
+    return recommended;
+  };
+
   // 초기 로드
   useEffect(() => {
     loadData();
@@ -327,13 +368,57 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
         </div>
       )}
 
-      {stage === 'reselect' && customerRequests.length > 0 && (
-        <div>
-          <h3>슬롯 재선택</h3>
-          <p style={{ color: '#666', fontSize: '14px' }}>
-            이전 신청의 슬롯이 모두 마감되었습니다. 다시 선택해주세요.
-          </p>
-          <SlotTable
+      {stage === 'reselect' && customerRequests.length > 0 && (() => {
+        const latest = customerRequests[customerRequests.length - 1];
+        const recommendedSlotIds = getRecommendedSlots(latest.request, latest.candidates);
+
+        return (
+          <div>
+            <h3>슬롯 재선택</h3>
+            <p style={{ color: '#666', fontSize: '14px' }}>
+              이전 신청의 슬롯이 모두 마감되었습니다. 다시 선택해주세요.
+            </p>
+
+            {recommendedSlotIds.length > 0 && (
+              <div style={{ marginBottom: '20px', padding: '16px', background: '#e8f5e9', borderRadius: '4px', border: '1px solid #4caf50' }}>
+                <h4 style={{ color: '#2e7d32', marginTop: 0 }}>✨ 추천 슬롯 (3개)</h4>
+                <p style={{ color: '#666', fontSize: '12px', marginBottom: '12px' }}>
+                  이전 선택과 유사한 슬롯을 추천합니다. 클릭하면 자동 선택됩니다.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                  {recommendedSlotIds.slice(0, 3).map((slotId: string, idx: number) => {
+                    const slot = slots[slotId];
+                    const isSelected = selectedSlots.includes(slotId);
+                    return (
+                      <button
+                        key={slotId}
+                        onClick={() => handleSlotToggle(slotId)}
+                        style={{
+                          padding: '12px',
+                          background: isSelected ? '#4caf50' : '#ffffff',
+                          color: isSelected ? '#ffffff' : '#2e7d32',
+                          border: `2px solid ${isSelected ? '#4caf50' : '#4caf50'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <div style={{ marginBottom: '4px' }}>
+                          {idx + 1}. {slot?.date}
+                        </div>
+                        <div style={{ fontSize: '12px' }}>
+                          {TIME_SLOTS.find((t: any) => t.label === slot?.timeLabel)?.displayLabel}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <SlotTable
             slots={slots}
             selectedSlots={selectedSlots}
             onToggle={handleSlotToggle}
@@ -384,7 +469,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({ db }) => {
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
