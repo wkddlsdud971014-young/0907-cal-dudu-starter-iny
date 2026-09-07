@@ -4,6 +4,8 @@ import type { Slot, Request, Candidate } from '../types';
 import { decideRequestStatus } from '../utils/decide';
 import { TIME_SLOTS } from '../utils/constants';
 import type { Backend } from '../utils/backend';
+import { slotToEvent, googleCalendarUrl, downloadIcs } from '../utils/calendar';
+import { buildConfirmationMail, gmailComposeUrl, mailtoUrl } from '../utils/mail';
 
 interface CustomerPageProps {
   backend: Backend;
@@ -201,6 +203,63 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     }
   };
 
+  // 확정된 슬롯을 캘린더로 넘기는 버튼 두 개.
+  // 구글 캘린더는 새 탭 링크, .ics 는 내려받기라 둘 다 서버·키가 필요 없다.
+  const renderCalendarActions = (confirmedSlotId: string | undefined, requestId: string) => {
+    const slot = confirmedSlotId ? slots[confirmedSlotId] : undefined;
+    if (!slot) return null;
+
+    const event = slotToEvent(slot, customerId);
+    if (!event) return null;
+
+    const mail = buildConfirmationMail(slot, customerId);
+
+    return (
+      <div style={{ marginTop: '10px' }}>
+        <a
+          className="btn btn-secondary"
+          href={googleCalendarUrl(event)}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: 'inline-block', marginRight: '8px', textDecoration: 'none' }}
+        >
+          구글 캘린더에 추가
+        </a>
+        <button
+          className="btn btn-secondary"
+          onClick={() => downloadIcs(event, `${requestId}@cal.dudu-works`, `cal-dudu-${slot.id}.ics`)}
+          style={{ marginRight: '8px' }}
+        >
+          캘린더 파일(.ics) 내려받기
+        </button>
+        {mail && (
+          <>
+            <a
+              className="btn btn-secondary"
+              href={gmailComposeUrl(mail)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginRight: '8px', textDecoration: 'none' }}
+            >
+              Gmail로 알리기
+            </a>
+            <a
+              className="btn btn-secondary"
+              href={mailtoUrl(mail)}
+              style={{ display: 'inline-block', textDecoration: 'none' }}
+            >
+              메일 앱으로 알리기
+            </a>
+          </>
+        )}
+        <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+          일정 길이는 1시간으로 넣습니다. 예약은 날짜와 시간대로만 잡히고 소요시간은 계산하지 않습니다.
+          메일은 앱이 직접 보내지 않고 내용이 채워진 작성 화면을 엽니다. 받는 사람은 직접 넣으세요.
+        </div>
+      </div>
+    );
+  };
+
   const handleCancel = () => {
     setSelectedSlots([]);
     setStage('view');
@@ -380,11 +439,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
               </div>
 
               {item.request.status === 'confirmed' && (
-                <div className="alert alert-success">
-                  <strong>확정됨!</strong> {slots[item.request.confirmedSlotId!]?.date}{' '}
-                  {TIME_SLOTS.find(t => t.label === slots[item.request.confirmedSlotId!]?.timeLabel)?.displayLabel}에
-                  확정되었습니다.
-                </div>
+                <>
+                  <div className="alert alert-success">
+                    <strong>확정됨!</strong> {slots[item.request.confirmedSlotId!]?.date}{' '}
+                    {TIME_SLOTS.find(t => t.label === slots[item.request.confirmedSlotId!]?.timeLabel)?.displayLabel}에
+                    확정되었습니다.
+                  </div>
+                  {/* 확정된 예약만 캘린더로 내보낸다. 접수·재선택 상태는 시각이 안 정해져서 제외. */}
+                  {renderCalendarActions(item.request.confirmedSlotId, item.request.id)}
+                </>
               )}
 
               {item.request.status === 'needs_reselection' && idx === customerRequests.length - 1 && (
