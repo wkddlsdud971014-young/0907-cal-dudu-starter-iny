@@ -418,6 +418,12 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
           <p style={{ color: '#666', fontSize: '14px' }}>
             다음과 같이 신청합니다. 제출하면 어드민이 확인 후 확정합니다.
           </p>
+          {/* 제출하기 전에 언제 답을 받는지 알려준다. As-is 에서는 제출한 뒤에야
+              알 수 있어서, 고르는 동안 얼마나 기다릴지 가늠할 수 없었다. */}
+          <div className="alert alert-info" style={{ fontSize: '14px' }}>
+            제출 후 <strong>{RESPONSE_SLA_HOURS}시간 안에 회신</strong>합니다.
+            그때까지 기다리시면 되고, 진행 상태는 이 화면에서 계속 확인할 수 있습니다.
+          </div>
           <SlotTable slots={slots} selectedSlots={selectedSlots} onToggle={() => {}} mode="view" />
 
           <div style={{ marginBottom: '20px' }}>
