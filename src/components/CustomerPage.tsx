@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SlotTable } from './SlotTable';
 import type { Slot, Request, Candidate } from '../types';
 import { decideRequestStatus } from '../utils/decide';
@@ -27,6 +27,19 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // 작업 ID는 "한 번의 제출 시도"를 가리키는 이름이다. 실패해서 다시 누를 때 같은 값을
+  // 보내야 서버가 중복 저장을 걸러낸다. 매번 새로 만들면 재시도가 별개 작업이 되어
+  // 멱등성 방어가 무력해진다. 성공했거나 선택을 바꾸면 그때 새 ID를 발급한다.
+  const submitOpId = useRef<string | null>(null);
+  const reselectOpId = useRef<string | null>(null);
+
+  const newOpId = (prefix: string) =>
+    `${prefix}-${
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    }`;
 
   const getRecommendedSlots = (previousRequest: Request, candidates: Candidate[]): string[] => {
     const previousCandidates = candidates.filter(c => c.requestId === previousRequest.id);
@@ -116,6 +129,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
       }
       return prev;
     });
+    // 고른 슬롯이 달라졌으면 다른 작업이다. 다음 제출은 새 ID로 나간다.
+    submitOpId.current = null;
+    reselectOpId.current = null;
     setError('');
   };
 
@@ -130,10 +146,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     setSuccess('');
 
     try {
-      const operationId = `submit-${customerId}-${Date.now()}`;
-      const result = await backend.submitRequest(customerId, selectedSlots, operationId);
+      if (!submitOpId.current) submitOpId.current = newOpId('submit');
+      const result = await backend.submitRequest(customerId, selectedSlots, submitOpId.current);
 
       if (result.success) {
+        submitOpId.current = null;
         setSuccess('신청이 완료되었습니다!');
         setSelectedSlots([]);
         setStage('view');
@@ -160,15 +177,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
     try {
       const latest = customerRequests[customerRequests.length - 1];
-      const operationId = `reselect-${latest.request.id}-${Date.now()}`;
+      if (!reselectOpId.current) reselectOpId.current = newOpId('reselect');
       const result = await backend.resubmitRequest(
         customerId,
         latest.request.id,
         selectedSlots,
-        operationId
+        reselectOpId.current
       );
 
       if (result.success) {
+        reselectOpId.current = null;
         setSuccess('재선택이 완료되었습니다!');
         setSelectedSlots([]);
         setStage('view');

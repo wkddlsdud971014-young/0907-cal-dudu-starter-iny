@@ -9,12 +9,11 @@ import { createBackend } from '../utils/backend';
 type Mode = 'local' | 'supabase';
 type Role = 'customer' | 'admin';
 
-// 어드민 판정은 app_metadata를 먼저 본다.
-// SQL의 confirm_request와 RLS 정책이 app_metadata.role만 신뢰하므로,
-// user_metadata만 보면 화면은 어드민인데 확정 RPC가 'Not authorized'로 막힌다.
+// 어드민 판정은 app_metadata만 본다.
+// user_metadata는 로그인한 사용자가 직접 고칠 수 있어 권한 근거로 쓰면 권한 상승이 된다.
+// PRD "user_metadata를 권한으로 믿지 않습니다"와 SQL의 confirm_request·RLS 정책이 같은 기준이다.
 function readRole(user: any): Role {
-  const role = user?.app_metadata?.role ?? user?.user_metadata?.role;
-  return role === 'admin' ? 'admin' : 'customer';
+  return user?.app_metadata?.role === 'admin' ? 'admin' : 'customer';
 }
 
 const App: React.FC = () => {

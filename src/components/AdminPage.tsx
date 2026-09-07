@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SlotTable } from './SlotTable';
 import type { Slot, Request, Candidate, OperationLog } from '../types';
 import { TIME_SLOTS } from '../utils/constants';
@@ -21,6 +21,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // 확정 실패 후 다시 누를 때 같은 작업 ID를 보내야 서버가 중복 확정을 걸러낸다.
+  // 대상(요청·슬롯)이 바뀌면 다른 작업이므로 새로 발급한다.
+  const confirmOpId = useRef<string | null>(null);
+
+  useEffect(() => {
+    confirmOpId.current = null;
+  }, [selectedRequest, selectedSlotForConfirm]);
 
   // 초기 로드
   useEffect(() => {
@@ -56,15 +64,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
     setSuccess('');
 
     try {
-      const operationId = `confirm-${selectedRequest}-${selectedSlotForConfirm}-${Date.now()}`;
+      if (!confirmOpId.current) {
+        confirmOpId.current = `confirm-${
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+        }`;
+      }
       const result = await backend.confirmRequest(
         selectedRequest,
         selectedSlotForConfirm,
         adminId,
-        operationId
+        confirmOpId.current
       );
 
       if (result.success) {
+        confirmOpId.current = null;
         setSuccess(`확정되었습니다! 영향받은 요청: ${result.affectedRequests?.length || 0}건`);
         setSelectedRequest(null);
         setSelectedSlotForConfirm(null);
