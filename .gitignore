@@ -11,3 +11,6 @@ dist/
 secrets.local.sh
 scripts/secrets.local.sh
 *.local.sh
+
+# 실제 값이 채워진 SQL. 양식(01_notify_webhook.sql)만 저장소에 둔다.
+*.local.sql

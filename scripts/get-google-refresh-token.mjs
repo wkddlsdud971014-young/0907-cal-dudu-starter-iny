@@ -11,6 +11,7 @@
 
 import http from 'node:http';
 import { URL } from 'node:url';
+import { readFile, writeFile } from 'node:fs/promises';
 
 const [, , clientId, clientSecret] = process.argv;
 
@@ -87,12 +88,29 @@ const server = http.createServer(async (req, res) => {
     .writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     .end('<h3>완료되었습니다. 터미널로 돌아가세요.</h3>');
 
-  console.log('성공. 아래 명령을 그대로 실행해 Edge Function 비밀값으로 넣으세요.\n');
-  console.log(`npx supabase secrets set \\
-  GOOGLE_CLIENT_ID='${clientId}' \\
-  GOOGLE_CLIENT_SECRET='${clientSecret}' \\
-  GOOGLE_REFRESH_TOKEN='${token.refresh_token}'`);
-  console.log('\n이 값은 화면 캡처하거나 저장소에 올리지 마세요.\n');
+  // 토큰을 화면에 찍지 않는다. 로그·화면 캡처·대화 기록에 남으면 안 되는 값이라
+  // 곧바로 secrets.local.sh 에 써 넣는다.
+  const target = 'scripts/secrets.local.sh';
+  try {
+    const current = await readFile(target, 'utf8');
+    const patched = current.replace(
+      /^GOOGLE_REFRESH_TOKEN=.*$/m,
+      `GOOGLE_REFRESH_TOKEN='${token.refresh_token}'`
+    );
+    if (patched === current) {
+      throw new Error('GOOGLE_REFRESH_TOKEN 줄을 찾지 못했습니다');
+    }
+    await writeFile(target, patched);
+    console.log(`성공. ${target} 의 GOOGLE_REFRESH_TOKEN 을 채웠습니다.`);
+    console.log(`(길이 ${token.refresh_token.length}자, 화면에는 찍지 않습니다)\n`);
+    console.log('다음: sh scripts/secrets.local.sh\n');
+  } catch (e) {
+    console.error(`\n${target} 에 쓰지 못했습니다: ${e.message}`);
+    console.error('먼저 아래를 실행해 파일을 만든 뒤 다시 시도하세요.');
+    console.error('  cp scripts/set-secrets.example.sh scripts/secrets.local.sh\n');
+    server.close();
+    process.exit(1);
+  }
 
   server.close();
   process.exit(0);

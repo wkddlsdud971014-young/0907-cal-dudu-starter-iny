@@ -24,6 +24,11 @@ GOOGLE_REFRESH_TOKEN=''
 # 다른 캘린더면 캘린더 설정 > "캘린더 통합" 의 캘린더 ID 를 넣으세요.
 GOOGLE_CALENDAR_ID='primary'
 
+# ── Supabase 액세스 토큰 ───────────────────────────────────
+# https://supabase.com/dashboard/account/tokens 에서 "Generate new token"
+# 이름은 아무거나. 만들면 한 번만 보이니 바로 복사해서 아래에 붙여넣으세요.
+SUPABASE_ACCESS_TOKEN=''
+
 # ── 웹훅 공유 비밀 ─────────────────────────────────────────
 # 비워두면 자동으로 만들어 줍니다. 그대로 두세요.
 WEBHOOK_SECRET=''
@@ -37,6 +42,8 @@ fail() { printf '\n[중단] %s\n' "$1" >&2; exit 1; }
 [ -n "$GOOGLE_CLIENT_ID" ]     || fail "GOOGLE_CLIENT_ID 가 비어 있습니다. 4단계 값을 넣으세요."
 [ -n "$GOOGLE_CLIENT_SECRET" ] || fail "GOOGLE_CLIENT_SECRET 가 비어 있습니다. 4단계 값을 넣으세요."
 [ -n "$GOOGLE_REFRESH_TOKEN" ] || fail "GOOGLE_REFRESH_TOKEN 이 비어 있습니다. 5단계를 먼저 하세요."
+[ -n "$SUPABASE_ACCESS_TOKEN" ] || fail "SUPABASE_ACCESS_TOKEN 이 비어 있습니다. https://supabase.com/dashboard/account/tokens 에서 만드세요."
+export SUPABASE_ACCESS_TOKEN
 
 case "$GOOGLE_CLIENT_ID" in
   *.apps.googleusercontent.com) ;;
@@ -45,7 +52,15 @@ esac
 
 if [ -z "$WEBHOOK_SECRET" ]; then
   WEBHOOK_SECRET=$(openssl rand -hex 24) || fail "openssl 로 비밀값을 만들지 못했습니다."
-  echo "웹훅 비밀값을 새로 만들었습니다."
+  # 만든 값을 이 파일에 다시 써 둔다. 안 그러면 다시 실행할 때마다 값이 달라져
+  # 서버에 등록된 것과 SQL 에 넣은 것이 어긋난다.
+  if [ -w "$0" ]; then
+    tmp="$0.tmp$$"
+    sed "s/^WEBHOOK_SECRET=.*/WEBHOOK_SECRET='$WEBHOOK_SECRET'/" "$0" > "$tmp" && mv "$tmp" "$0"
+    echo "웹훅 비밀값을 새로 만들어 $0 에 저장했습니다."
+  else
+    echo "웹훅 비밀값을 새로 만들었습니다(파일에 저장하지 못했습니다)."
+  fi
 fi
 
 echo "Supabase 프로젝트에 연결합니다: $PROJECT_REF"
