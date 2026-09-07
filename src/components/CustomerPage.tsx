@@ -96,15 +96,22 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const loadData = async () => {
     let status: Awaited<ReturnType<Backend['getCustomerStatus']>>;
     try {
-      const [nextSlots, nextStatus, nextLogs] = await Promise.all([
+      // 슬롯과 신청 현황은 화면의 뼈대라 실패하면 오류를 보여준다.
+      const [nextSlots, nextStatus] = await Promise.all([
         backend.getSlots(),
         backend.getCustomerStatus(customerId),
-        backend.getMyLogs(customerId),
       ]);
       setSlots(nextSlots);
       setCustomerRequests(nextStatus);
-      setMyLogs(nextLogs);
       status = nextStatus;
+
+      // 타임라인은 곁들이는 정보다. 정책 SQL 미실행이나 오래된 세션 때문에
+      // 실패하더라도 기한·경과 표시와 신청 현황은 그대로 보여야 한다.
+      try {
+        setMyLogs(await backend.getMyLogs(customerId));
+      } catch {
+        setMyLogs([]);
+      }
       setError('');
     } catch (err: any) {
       setError(err?.message || String(err));
@@ -354,19 +361,20 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   return (
     <div className="customer-page">
       <div className="form-group">
-        <label>고객 코드</label>
-        <input
-          type="text"
-          value={customerId}
-          onChange={e => onCustomerIdChange?.(e.target.value)}
-          placeholder="C01"
-          // Supabase 모드에서는 로그인 계정이 곧 고객 코드라 편집할 수 없다.
-          disabled={!onCustomerIdChange || stage === 'confirm'}
-        />
-        {!onCustomerIdChange && (
-          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-            로그인한 계정으로 신청합니다.
-          </div>
+        {/* 고객 코드는 로컬 모드에서만 손으로 정한다.
+            Supabase 모드에서는 로그인 계정이 곧 고객이고 화면 위에 이메일이 이미 떠 있어서,
+            읽을 수 없는 uid 를 한 번 더 보여줄 이유가 없다. */}
+        {onCustomerIdChange && (
+          <>
+            <label>고객 코드</label>
+            <input
+              type="text"
+              value={customerId}
+              onChange={e => onCustomerIdChange(e.target.value)}
+              placeholder="C01"
+              disabled={stage === 'confirm'}
+            />
+          </>
         )}
       </div>
 

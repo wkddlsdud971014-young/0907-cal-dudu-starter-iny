@@ -130,10 +130,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="alert alert-info">
-          <strong>Supabase 모드:</strong> 실제 데이터베이스와 인증이 적용됩니다.
-        </div>
-
         <div style={{ maxWidth: '400px', margin: '60px auto', padding: '40px', background: 'white', border: '1px solid #ddd', borderRadius: '4px' }}>
           <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>로그인</h2>
 
@@ -212,9 +208,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="alert alert-info">
-          <strong>Supabase 모드:</strong> 실제 데이터베이스와 인증이 적용됩니다.
-        </div>
+        {/* 모드 표시는 PRD 44행 요구사항이라 헤더의 배지로 유지한다.
+            여기 있던 안내 바는 같은 말을 두 번 하는 것이라 뺐다. */}
 
         {/* Supabase 모드에서는 고객 코드 = 로그인 uid. RPC가 auth.uid()와 대조한다. */}
         {userRole === 'customer' && <CustomerPage backend={backend} customerId={user.id} />}

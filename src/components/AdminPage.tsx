@@ -47,17 +47,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
   const loadData = async () => {
     try {
-      const [nextSlots, nextRequests, nextLogs, nextLabels] = await Promise.all([
+      // 확정 작업에 꼭 필요한 것들. 실패하면 오류를 보여준다.
+      const [nextSlots, nextRequests, nextLogs] = await Promise.all([
         backend.getSlots(),
         backend.getAdminRequests(),
         backend.getLogs(),
-        backend.getCustomerLabels(),
       ]);
       setSlots(nextSlots);
       setRequests(nextRequests);
       setLogs(nextLogs);
-      setCustomerLabels(nextLabels);
       setError('');
+
+      // 이메일 표시는 곁들이는 정보다. 실패해도 uid 로 보이면 되고 확정은 그대로 된다.
+      try {
+        setCustomerLabels(await backend.getCustomerLabels());
+      } catch {
+        setCustomerLabels({});
+      }
     } catch (err: any) {
       setError(err?.message || String(err));
       return;
