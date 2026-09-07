@@ -4,6 +4,7 @@ import type { Slot, Request, Candidate, OperationLog } from '../types';
 import { TIME_SLOTS } from '../utils/constants';
 import type { Backend } from '../utils/backend';
 import { BookingCalendar } from './BookingCalendar';
+import { deadlineView, elapsedLabel } from '../utils/policy';
 
 interface AdminPageProps {
   backend: Backend;
@@ -107,6 +108,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
 
   const currentRequest = selectedRequest ? requests.find(r => r.request.id === selectedRequest) : null;
 
+  // To-be ③: 오래 기다린 미확정 신청을 위로 올린다.
+  // 앞의 두 개는 기다림을 견디게 하고, 이건 기다림 자체를 줄인다.
+  // 자동 확정이 아니라 사람이 먼저 보게 만드는 것이라 수동 확정 규칙을 지킨다.
+  const waitingSorted = [...requests].sort((a, b) => {
+    const aPending = a.request.status !== 'confirmed';
+    const bPending = b.request.status !== 'confirmed';
+    if (aPending !== bPending) return aPending ? -1 : 1;
+    return new Date(a.request.createdAt).getTime() - new Date(b.request.createdAt).getTime();
+  });
+
+  const overdueCount = requests.filter(
+    r =>
+      r.request.status !== 'confirmed' &&
+      deadlineView(r.request.createdAt).overdue
+  ).length;
+
   return (
     <div className="admin-page">
       <h2>어드민 패널</h2>
@@ -140,9 +157,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
         {/* 요청 목록 */}
         <div>
           <h3>신청 목록 (총 {requests.length}건)</h3>
+          {overdueCount > 0 && (
+            <div className="alert alert-warning" style={{ marginBottom: '10px' }}>
+              회신 기한이 지난 신청이 {overdueCount}건 있습니다. 위쪽부터 처리하세요.
+            </div>
+          )}
+          <p style={{ fontSize: '12px', color: '#666', margin: '0 0 8px' }}>
+            미확정 신청을 오래 기다린 순으로 보여줍니다.
+          </p>
           <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}>
             <ul className="list" style={{ margin: 0 }}>
-              {requests.map((item, idx) => (
+              {waitingSorted.map((item, idx) => (
                 <li
                   key={item.request.id}
                   onClick={() => {
@@ -173,6 +198,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
                           ? '재선택필요'
                           : '접수됨'}
                     </span>
+                    {item.request.status !== 'confirmed' && (
+                      <span
+                        style={{
+                          marginLeft: '8px',
+                          fontSize: '12px',
+                          fontWeight: deadlineView(item.request.createdAt).overdue ? 'bold' : 'normal',
+                          color: deadlineView(item.request.createdAt).overdue ? '#dc3545' : '#666',
+                        }}
+                      >
+                        {elapsedLabel(item.request.createdAt)}
+                        {deadlineView(item.request.createdAt).overdue && ' · 기한 초과'}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}

@@ -6,6 +6,8 @@ import { TIME_SLOTS } from '../utils/constants';
 import type { Backend } from '../utils/backend';
 import { slotToEvent, googleCalendarUrl, downloadIcs } from '../utils/calendar';
 import { buildConfirmationMail, gmailComposeUrl, mailtoUrl } from '../utils/mail';
+import { RESPONSE_SLA_HOURS, deadlineView, elapsedLabel, shortKst } from '../utils/policy';
+import type { OperationLog } from '../types';
 
 interface CustomerPageProps {
   backend: Backend;
@@ -29,6 +31,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  // 내 신청의 처리 이력. 진행 타임라인을 그리는 데 쓴다.
+  const [myLogs, setMyLogs] = useState<OperationLog[]>([]);
 
   // 작업 ID는 "한 번의 제출 시도"를 가리키는 이름이다. 실패해서 다시 누를 때 같은 값을
   // 보내야 서버가 중복 저장을 걸러낸다. 매번 새로 만들면 재시도가 별개 작업이 되어
@@ -92,12 +96,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const loadData = async () => {
     let status: Awaited<ReturnType<Backend['getCustomerStatus']>>;
     try {
-      const [nextSlots, nextStatus] = await Promise.all([
+      const [nextSlots, nextStatus, nextLogs] = await Promise.all([
         backend.getSlots(),
         backend.getCustomerStatus(customerId),
+        backend.getMyLogs(customerId),
       ]);
       setSlots(nextSlots);
       setCustomerRequests(nextStatus);
+      setMyLogs(nextLogs);
       status = nextStatus;
       setError('');
     } catch (err: any) {
@@ -201,6 +207,68 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // 확정 전 신청의 진행 상황. To-be ①②가 여기 들어간다.
+  //
+  // As-is 에서는 '접수됨' 세 글자뿐이라 언제 결과가 나오는지 알 수 없었다.
+  // 여기서 세 가지를 알려준다. 언제 접수됐는지, 얼마나 지났는지, 언제까지 회신하는지.
+  const renderProgress = (request: Request) => {
+    if (request.status === 'confirmed') return null;
+
+    const view = deadlineView(request.createdAt);
+    const steps = myLogs
+      .filter(l => l.requestId === request.id)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return (
+      <div
+        style={{
+          marginTop: '10px',
+          padding: '14px 16px',
+          background: view.overdue ? '#fff3cd' : '#eef3fb',
+          border: `1px solid ${view.overdue ? '#e0c068' : '#c7d6ef'}`,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>
+          {view.overdue
+            ? '회신 기한이 지났습니다'
+            : `${shortKst(view.deadline)}까지 회신 예정`}
+          <span style={{ fontWeight: 'normal', color: '#555', marginLeft: '8px' }}>
+            {view.overdue ? '' : view.remainingLabel}
+          </span>
+        </div>
+
+        <div style={{ fontSize: '13px', color: '#555', marginBottom: '10px' }}>
+          접수 {shortKst(new Date(request.createdAt))} · {elapsedLabel(request.createdAt)}
+        </div>
+
+        {/* 처리 이력. 정책 SQL 을 아직 실행하지 않았으면 비어 있고, 그때는 안내만 뜬다. */}
+        {steps.length > 0 ? (
+          <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', lineHeight: 1.8 }}>
+            {steps.map(s => (
+              <li key={s.id}>
+                {s.action === 'submit' && '신청 접수'}
+                {s.action === 'reselect' && '재선택 접수'}
+                {s.action === 'confirm' && '확정 처리'}
+                {s.status === 'failed' && ' (실패)'}
+                <span style={{ color: '#777', marginLeft: '8px' }}>
+                  {shortKst(new Date(s.timestamp))}
+                </span>
+              </li>
+            ))}
+            <li style={{ color: '#777' }}>관리자 검토 대기 중</li>
+          </ol>
+        ) : (
+          <div style={{ fontSize: '13px', color: '#777' }}>관리자 검토 대기 중</div>
+        )}
+
+        <div style={{ fontSize: '12px', color: '#777', marginTop: '10px' }}>
+          접수 후 {RESPONSE_SLA_HOURS}시간 안에 회신합니다. 기한까지는 다시 확인하지 않으셔도 됩니다.
+        </div>
+      </div>
+    );
   };
 
   // 확정된 슬롯을 캘린더로 넘기는 버튼 두 개.
@@ -415,6 +483,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     <span className="alert alert-warning">재선택 필요</span>
                   )}
                 </div>
+                {renderProgress(item.request)}
               </div>
 
               <div className="form-group">

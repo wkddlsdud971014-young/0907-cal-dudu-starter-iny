@@ -31,6 +31,9 @@ export interface Backend {
   getCustomerStatus(customerId: string): Promise<RequestView[]>;
   getAdminRequests(): Promise<RequestView[]>;
   getLogs(): Promise<OperationLog[]>;
+  // 고객 자신의 진행 이력. 어드민 전용 getLogs 와 달리 본인 것만 돌아온다.
+  // 권한이 없거나 정책이 아직 없으면 빈 배열이라 화면은 그대로 뜬다.
+  getMyLogs(customerId: string): Promise<OperationLog[]>;
   // 고객 식별자를 사람이 읽을 이름으로 바꾸는 표. 어드민 화면 표시용이다.
   // 로컬 모드는 고객 코드가 이미 'C01' 이라 빈 표를 준다.
   getCustomerLabels(): Promise<Record<string, string>>;
@@ -77,6 +80,13 @@ export class LocalBackend implements Backend {
 
   async getCustomerLabels() {
     return {};
+  }
+
+  async getMyLogs(customerId: string) {
+    const myIds = new Set(
+      this.db.getRequestsByCustomerId(customerId).map(r => r.id)
+    );
+    return (this.db.getState().logs || []).filter(l => myIds.has(l.requestId));
   }
 
   async submitRequest(customerId: string, slotIds: string[], operationId: string) {
@@ -271,6 +281,17 @@ export class SupabaseBackend implements Backend {
       .select('*')
       .order('timestamp', { ascending: false });
     // 로그는 어드민만 읽을 수 있다. 권한이 없으면 화면을 막지 말고 빈 목록으로 둔다.
+    if (error) return [];
+    return ((data as unknown as LogRow[] | null) || []).map(toLog);
+  }
+
+  // RLS 가 본인 신청에 달린 기록만 내려준다. sql/03_customer_logs.sql 참고.
+  async getMyLogs(_customerId: string): Promise<OperationLog[]> {
+    const { data, error } = await this.client()
+      .from('operation_logs')
+      .select('*')
+      .order('timestamp', { ascending: true });
+    // 정책을 아직 실행하지 않았으면 조용히 비운다. 타임라인만 안 보이고 화면은 산다.
     if (error) return [];
     return ((data as unknown as LogRow[] | null) || []).map(toLog);
   }
