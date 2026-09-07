@@ -3,6 +3,7 @@ import { SlotTable } from './SlotTable';
 import type { Slot, Request, Candidate, OperationLog } from '../types';
 import { TIME_SLOTS } from '../utils/constants';
 import type { Backend } from '../utils/backend';
+import { BookingCalendar } from './BookingCalendar';
 
 interface AdminPageProps {
   backend: Backend;
@@ -21,6 +22,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<'manage' | 'calendar'>('manage');
 
   // 확정 실패 후 다시 누를 때 같은 작업 ID를 보내야 서버가 중복 확정을 걸러낸다.
   // 대상(요청·슬롯)이 바뀌면 다른 작업이므로 새로 발급한다.
@@ -100,9 +102,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
     <div className="admin-page">
       <h2>어드민 패널</h2>
 
+      {/* 확정 작업 화면과 달력 보기를 나눈다. 데이터는 같은 것을 쓴다. */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <button
+          className={`btn ${tab === 'manage' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setTab('manage')}
+        >
+          신청 관리
+        </button>
+        <button
+          className={`btn ${tab === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setTab('calendar')}
+        >
+          예약 달력
+        </button>
+      </div>
+
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
+      {tab === 'calendar' && <BookingCalendar slots={slots} requests={requests} />}
+
+      {tab === 'manage' && (
+      <>
       <div className="grid">
         {/* 요청 목록 */}
         <div>
@@ -286,6 +308,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };
