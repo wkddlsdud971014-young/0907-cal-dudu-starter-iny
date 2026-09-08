@@ -107,6 +107,24 @@ export async function signInWithPassword(email: string, password: string) {
   return data;
 }
 
+// 배포판 방문자용 입구. 이메일·비밀번호 없이 각자 uid 를 받는다.
+//
+// 계정을 하나로 공유하면 "고객당 신청 하나" 규칙 때문에 먼저 들어온 사람의 신청을
+// 다음 사람이 자기 것으로 보게 된다. 익명 로그인은 사람마다 uid 가 달라서
+// 기존 RLS(customer_id = auth.uid())가 그대로 각자를 갈라준다.
+//
+// 익명 사용자도 JWT 의 role 은 authenticated 다. 그래서 정책과 RPC 권한을 고치지 않는다.
+// app_metadata 는 비어 있으므로 어드민이 될 수 없다.
+// Supabase 대시보드에서 Authentication → Sign In / Providers → Anonymous sign-ins 를 켜야 한다.
+export async function signInAnonymously() {
+  if (!supabase) throw new Error('Supabase not initialized');
+
+  const { data, error } = await supabase.auth.signInAnonymously();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   if (!supabase) throw new Error('Supabase not initialized');
 

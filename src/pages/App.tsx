@@ -3,7 +3,7 @@ import { CustomerPage } from '../components/CustomerPage';
 import { AdminPage } from '../components/AdminPage';
 import { DatabaseManager } from '../utils/database';
 import { REFERENCE_TIME } from '../utils/constants';
-import { supabase, signInWithPassword, signOut, getCurrentUser } from '../utils/supabase';
+import { supabase, signInWithPassword, signInAnonymously, signOut, getCurrentUser } from '../utils/supabase';
 import { createBackend } from '../utils/backend';
 
 type Mode = 'local' | 'supabase';
@@ -36,6 +36,8 @@ const App: React.FC = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [error, setError] = useState('');
+  // 배포판의 기본 입구는 익명 로그인이다. 운영자 로그인 폼은 접어두고 필요할 때만 편다.
+  const [showOperatorLogin, setShowOperatorLogin] = useState(false);
 
   // Supabase 모드일 때 사용자 상태 확인
   useEffect(() => {
@@ -90,6 +92,26 @@ const App: React.FC = () => {
     }
   };
 
+  // 계정 없이 바로 들어오는 입구. 사람마다 uid 가 달라 서로의 신청을 침범하지 않는다.
+  const handleAnonymousStart = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await signInAnonymously();
+      setUser(result.user);
+      setUserRole(readRole(result.user));
+    } catch (err: any) {
+      setError(
+        err?.message?.includes('disabled') || err?.status === 422
+          ? '체험 입구가 아직 닫혀 있습니다. Supabase 대시보드에서 Anonymous sign-ins 를 켜야 합니다.'
+          : err.message || '테스트 시작 실패'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSupabaseLogout = async () => {
     setLoading(true);
     try {
@@ -131,50 +153,76 @@ const App: React.FC = () => {
         </div>
 
         <div style={{ maxWidth: '400px', margin: '60px auto', padding: '40px', background: 'white', border: '1px solid #ddd', borderRadius: '4px' }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>로그인</h2>
+          <h2 style={{ textAlign: 'center', marginBottom: '10px' }}>상담 예약 체험</h2>
+          <p style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: 0, marginBottom: '26px' }}>
+            가입 없이 바로 써볼 수 있습니다.
+          </p>
 
           {error && <div className="alert alert-error">{error}</div>}
 
-          <form onSubmit={handleSupabaseLogin}>
-            <div className="form-group">
-              <label>이메일</label>
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="customer1@test.com"
-                required
-                disabled={loading}
-              />
-            </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            onClick={handleAnonymousStart}
+            disabled={loading}
+          >
+            {loading ? '준비 중...' : '테스트 시작'}
+          </button>
 
-            <div className="form-group">
-              <label>비밀번호</label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Test123456!"
-                required
-                disabled={loading}
-              />
-            </div>
+          <p style={{ fontSize: '12px', color: '#666', lineHeight: 1.6, marginTop: '14px', marginBottom: 0 }}>
+            눌러서 들어오면 참여자마다 별도의 신청이 만들어집니다.
+            같은 브라우저로 다시 오면 이어서 보이고, 로그아웃하면 새 참여자가 됩니다.
+          </p>
 
+          <hr style={{ margin: '26px 0 18px', border: 0, borderTop: '1px solid #eee' }} />
+
+          {!showOperatorLogin ? (
             <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%' }}
+              type="button"
+              className="btn btn-secondary"
+              style={{ width: '100%', fontSize: '13px' }}
+              onClick={() => setShowOperatorLogin(true)}
               disabled={loading}
             >
-              {loading ? '로그인 중...' : '로그인'}
+              운영자로 로그인
             </button>
-          </form>
+          ) : (
+            <form onSubmit={handleSupabaseLogin}>
+              <div className="form-group">
+                <label>이메일</label>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  autoComplete="username"
+                  required
+                  disabled={loading}
+                />
+              </div>
 
-          <div style={{ marginTop: '20px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
-            <p><strong>테스트 계정:</strong></p>
-            <p>고객: customer1@test.com / Test123456!</p>
-            <p>어드민: admin@test.com / Admin123456!</p>
-          </div>
+              <div className="form-group">
+                <label>비밀번호</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: '100%' }}
+                disabled={loading}
+              >
+                {loading ? '로그인 중...' : '로그인'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -193,8 +241,9 @@ const App: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* 익명 참여자는 이메일이 없다. uid 앞자리로 서로를 구분하게 둔다. */}
             <span style={{ fontSize: '14px', color: '#666' }}>
-              {user.email} ({userRole === 'admin' ? '어드민' : '고객'})
+              {user.email || `체험 ${String(user.id).slice(0, 8)}`} ({userRole === 'admin' ? '어드민' : '고객'})
             </span>
             <button
               className="btn btn-secondary"
