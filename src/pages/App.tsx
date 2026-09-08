@@ -129,8 +129,17 @@ const App: React.FC = () => {
     setRole(newRole);
   };
 
+  // 로컬 모드 전용. DatabaseManager.reset() 은 localStorage 의 'cal_dudu_db' 한 칸만
+  // 덮어쓴다. Supabase 는 경로가 아예 달라 여기서 지워지지 않는다.
+  // 문구가 "모든 데이터"라고만 되어 있어 서버까지 지우는 것으로 읽혔다. 범위를 명시한다.
   const handleResetData = () => {
-    if (window.confirm('모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if (
+      window.confirm(
+        '이 브라우저에 저장된 실습 데이터만 지웁니다.\n\n' +
+          '서버(Supabase)의 예약은 지워지지 않습니다.\n' +
+          '이 브라우저의 신청·확정 기록은 되돌릴 수 없습니다. 계속할까요?'
+      )
+    ) {
       db.reset();
       window.location.reload();
     }
