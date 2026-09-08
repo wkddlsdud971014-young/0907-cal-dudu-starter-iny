@@ -71,7 +71,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  // retry 는 CustomerPage 와 같은 이유다. 로그인 직후 첫 조회가 인증 서버와
+  // API 서버의 순간적인 시계 차이로 "JWT issued at future" 를 맞을 수 있다.
+  const loadData = async (retry = true) => {
     try {
       // 확정 작업에 꼭 필요한 것들. 실패하면 오류를 보여준다.
       const [nextSlots, nextRequests, nextLogs] = await Promise.all([
@@ -97,6 +99,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
         setCalendarResults({});
       }
     } catch (err: any) {
+      if (retry) {
+        await new Promise(r => setTimeout(r, 1200));
+        return loadData(false);
+      }
       setError(err?.message || String(err));
       return;
     }

@@ -94,7 +94,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     loadData();
   }, [customerId]);
 
-  const loadData = async () => {
+  // retry: 첫 조회가 실패했을 때 한 번만 더 부를지.
+  //
+  // 익명 로그인 직후 첫 조회가 "JWT issued at future" 로 튕기는 일이 있다.
+  // 토큰을 발급하는 인증 서버와 조회를 받는 API 서버의 시계가 순간적으로 어긋나면,
+  // 방금 발급된 토큰의 iat 가 API 서버 기준으로 아직 미래라 거부된다.
+  // 몇백 밀리초 뒤에는 통과한다. 배포판에서 처음 들어온 사람이 전부 이걸 맞고
+  // 화면이 빈 채로 굳어서, 한 번만 조용히 다시 부른다.
+  const loadData = async (retry = true) => {
     let status: Awaited<ReturnType<Backend['getCustomerStatus']>>;
     try {
       // 슬롯과 신청 현황은 화면의 뼈대라 실패하면 오류를 보여준다.
@@ -123,6 +130,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
       }
       setError('');
     } catch (err: any) {
+      if (retry) {
+        await new Promise(r => setTimeout(r, 1200));
+        return loadData(false);
+      }
       setError(err?.message || String(err));
       return;
     }
