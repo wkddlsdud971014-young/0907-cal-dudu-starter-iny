@@ -30,9 +30,9 @@ export function slotToEvent(slot: Slot, customerLabel: string): CalendarEvent | 
   return {
     start,
     end,
-    title: `[확정] cal.dudu 예약 ${slot.date} ${timeSlot.displayLabel}`,
+    title: `[확정] Duduworks 상담 예약 ${slot.date} ${timeSlot.displayLabel}`,
     description: [
-      'cal.dudu-works.com 예약이 확정되었습니다.',
+      'Duduworks - iny Calendar 예약이 확정되었습니다.',
       `날짜: ${slot.date}`,
       `시간: ${timeSlot.displayLabel} (한국 시간)`,
       `슬롯: ${slot.id}`,
@@ -83,7 +83,7 @@ export function buildIcs(event: CalendarEvent, uid: string): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//cal.dudu-works//booking//KO',
+    'PRODID:-//Duduworks//iny Calendar//KO',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',

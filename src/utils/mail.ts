@@ -22,7 +22,7 @@ export function buildConfirmationMail(slot: Slot, customerLabel: string): MailDr
       `시간: ${timeSlot.displayLabel} (한국 시간)`,
       `고객: ${customerLabel}`,
       '',
-      '— cal.dudu-works.com',
+      '— Duduworks - iny Calendar',
     ].join('\n'),
   };
 }
