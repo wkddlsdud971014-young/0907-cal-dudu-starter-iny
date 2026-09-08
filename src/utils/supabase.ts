@@ -125,9 +125,37 @@ export async function signInAnonymously() {
   return data;
 }
 
+export async function getSession() {
+  if (!supabase) throw new Error('Supabase not initialized');
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+// 저장해 둔 토큰으로 로그인 상태를 되살린다.
+//
+// 익명 참여자는 비밀번호가 없어서 한 번 로그아웃하면 다시 들어갈 방법이 없다.
+// 그런데 혼자서 「신청 → 어드민 확정 → 고객이 결과 확인」을 돌려보려면
+// 중간에 어드민으로 갈아탔다가 원래 참여자로 돌아와야 한다.
+// 그래서 로그아웃 전에 토큰을 남겨 두고 이 함수로 되돌아온다.
+export async function restoreSession(tokens: {
+  access_token: string;
+  refresh_token: string;
+}) {
+  if (!supabase) throw new Error('Supabase not initialized');
+
+  const { data, error } = await supabase.auth.setSession(tokens);
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   if (!supabase) throw new Error('Supabase not initialized');
 
-  const { error } = await supabase.auth.signOut();
+  // scope: 'local' 은 이 브라우저의 세션만 지우고 refresh token 을 서버에서
+  // 폐기하지 않는다. 기본값(global)으로 지우면 남겨 둔 토큰까지 무효가 되어
+  // restoreSession 으로 되돌아올 수 없다.
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) throw error;
 }

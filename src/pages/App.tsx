@@ -3,7 +3,15 @@ import { CustomerPage } from '../components/CustomerPage';
 import { AdminPage } from '../components/AdminPage';
 import { DatabaseManager } from '../utils/database';
 import { REFERENCE_TIME } from '../utils/constants';
-import { supabase, signInWithPassword, signInAnonymously, signOut, getCurrentUser } from '../utils/supabase';
+import {
+  supabase,
+  signInWithPassword,
+  signInAnonymously,
+  signOut,
+  getCurrentUser,
+  getSession,
+  restoreSession,
+} from '../utils/supabase';
 import { createBackend } from '../utils/backend';
 
 type Mode = 'local' | 'supabase';
@@ -14,6 +22,37 @@ type Role = 'customer' | 'admin';
 // PRD "user_metadata를 권한으로 믿지 않습니다"와 SQL의 confirm_request·RLS 정책이 같은 기준이다.
 function readRole(user: any): Role {
   return user?.app_metadata?.role === 'admin' ? 'admin' : 'customer';
+}
+
+// 어드민으로 갈아타는 동안 체험 참여자를 여기에 맡겨 둔다.
+// 익명 참여자는 비밀번호가 없어 로그아웃하면 다시 들어갈 길이 없는데,
+// 혼자서 「신청 → 어드민 확정 → 고객이 결과 확인」을 돌려보려면 돌아와야 한다.
+const TRIAL_KEY = 'cal_dudu_trial_session';
+
+interface TrialSession {
+  access_token: string;
+  refresh_token: string;
+  label: string;
+}
+
+function readTrial(): TrialSession | null {
+  try {
+    const raw = window.localStorage.getItem(TRIAL_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return v?.access_token && v?.refresh_token ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTrial(v: TrialSession | null) {
+  try {
+    if (v) window.localStorage.setItem(TRIAL_KEY, JSON.stringify(v));
+    else window.localStorage.removeItem(TRIAL_KEY);
+  } catch {
+    // 저장이 막힌 브라우저에서도 앱은 그대로 돌아야 한다. 돌아오기만 못 할 뿐이다.
+  }
 }
 
 const App: React.FC = () => {
@@ -38,6 +77,8 @@ const App: React.FC = () => {
   const [error, setError] = useState('');
   // 배포판의 기본 입구는 익명 로그인이다. 운영자 로그인 폼은 접어두고 필요할 때만 편다.
   const [showOperatorLogin, setShowOperatorLogin] = useState(false);
+  // 어드민으로 갈아타면서 맡겨 둔 체험 참여자. 있으면 로그인 화면에서 돌아갈 수 있다.
+  const [trial, setTrial] = useState<TrialSession | null>(() => readTrial());
 
   // Supabase 모드일 때 사용자 상태 확인
   useEffect(() => {
@@ -115,11 +156,59 @@ const App: React.FC = () => {
   const handleSupabaseLogout = async () => {
     setLoading(true);
     try {
+      // 체험 참여자는 서버에 로그아웃을 알리지 않는다.
+      //
+      // signOut 은 scope 를 'local' 로 줘도 서버가 refresh token 을 폐기한다.
+      // (확인: local scope 로그아웃 뒤 refresh 요청이 refresh_token_not_found 로 400)
+      // 비밀번호가 없는 익명 참여자는 그러면 영영 돌아올 수 없다.
+      // 그래서 토큰을 맡겨 두고 화면에서만 나간다. 어드민으로 로그인하면
+      // supabase 클라이언트가 세션을 덮어쓰므로 실제로 갈아타진다.
+      if (user?.is_anonymous) {
+        const session = await getSession();
+        if (session?.access_token && session?.refresh_token) {
+          writeTrial({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            label: `체험 ${String(user.id).slice(0, 8)}`,
+          });
+          setTrial(readTrial());
+        }
+        setUser(null);
+        setUserRole(null);
+        return;
+      }
+
       await signOut();
       setUser(null);
       setUserRole(null);
     } catch (err: any) {
       setError(err.message || '로그아웃 실패');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 맡겨 둔 체험 참여자로 돌아간다.
+  const handleResumeTrial = async () => {
+    if (!trial) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await restoreSession({
+        access_token: trial.access_token,
+        refresh_token: trial.refresh_token,
+      });
+      if (!result.user) throw new Error('세션을 되살리지 못했습니다');
+      setUser(result.user);
+      setUserRole(readRole(result.user));
+      writeTrial(null);
+      setTrial(null);
+    } catch (err: any) {
+      // 만료됐거나 서버에서 지워진 세션이다. 남겨 둔 값을 치우고 새로 시작하게 한다.
+      writeTrial(null);
+      setTrial(null);
+      setError('이전 체험으로 돌아갈 수 없습니다. 「테스트 시작」으로 새로 시작해 주세요.');
     } finally {
       setLoading(false);
     }
@@ -151,7 +240,7 @@ const App: React.FC = () => {
       <div className="container">
         <div className="header">
           <div>
-            <h1>cal.dudu-works.com</h1>
+            <h1>Duduworks - iny Calendar</h1>
             <div className="reference-time">
               기준 시각: {REFERENCE_TIME.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (고정)
             </div>
@@ -169,19 +258,50 @@ const App: React.FC = () => {
 
           {error && <div className="alert alert-error">{error}</div>}
 
+          {/* 어드민 일을 보러 나갔던 체험 참여자가 있으면 돌아갈 길을 먼저 보여준다.
+              「테스트 시작」을 누르면 새 사람이 되어 아까 낸 신청을 못 보기 때문이다. */}
+          {trial && (
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '13px 15px',
+                background: '#eef2fb',
+                border: '1px solid #ccd8f2',
+                borderLeft: '3px solid #2446ad',
+                borderRadius: '6px',
+              }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '3px' }}>
+                이어서 볼 체험이 있습니다
+              </div>
+              <div style={{ fontSize: '12px', color: '#555', marginBottom: '10px' }}>
+                {trial.label} · 아까 넣은 신청을 그대로 볼 수 있습니다.
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ width: '100%' }}
+                onClick={handleResumeTrial}
+                disabled={loading}
+              >
+                {loading ? '불러오는 중...' : '이전 체험 이어서 보기'}
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
-            className="btn btn-primary"
+            className={`btn ${trial ? 'btn-secondary' : 'btn-primary'}`}
             style={{ width: '100%' }}
             onClick={handleAnonymousStart}
             disabled={loading}
           >
-            {loading ? '준비 중...' : '테스트 시작'}
+            {loading ? '준비 중...' : trial ? '새 참여자로 시작' : '테스트 시작'}
           </button>
 
           <p style={{ fontSize: '12px', color: '#666', lineHeight: 1.6, marginTop: '14px', marginBottom: 0 }}>
-            눌러서 들어오면 참여자마다 별도의 신청이 만들어집니다.
-            같은 브라우저로 다시 오면 이어서 보이고, 로그아웃하면 새 참여자가 됩니다.
+            눌러서 들어오면 참여자마다 별도의 신청이 만들어집니다. 같은 브라우저로 다시 오면 이어서 보입니다.
+            운영자로 갈아타려고 로그아웃해도, 이 화면에서 원래 체험으로 돌아올 수 있습니다.
           </p>
 
           <hr style={{ margin: '26px 0 18px', border: 0, borderTop: '1px solid #eee' }} />
@@ -243,7 +363,7 @@ const App: React.FC = () => {
       <div className="container">
         <div className="header">
           <div>
-            <h1>cal.dudu-works.com</h1>
+            <h1>Duduworks - iny Calendar</h1>
             <div className="reference-time">
               기준 시각: {REFERENCE_TIME.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (고정)
             </div>
@@ -259,8 +379,13 @@ const App: React.FC = () => {
               onClick={handleSupabaseLogout}
               style={{ padding: '6px 12px', fontSize: '12px' }}
               disabled={loading}
+              title={
+                user?.is_anonymous
+                  ? '이 체험은 이 브라우저에 남습니다. 다음 화면에서 「이전 체험 이어서 보기」로 돌아올 수 있습니다.'
+                  : undefined
+              }
             >
-              로그아웃
+              {user?.is_anonymous ? '나가기' : '로그아웃'}
             </button>
             <span className="mode-badge supabase">Supabase 모드</span>
           </div>
@@ -275,7 +400,7 @@ const App: React.FC = () => {
 
         <hr style={{ margin: '40px 0', borderColor: '#ddd' }} />
         <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', paddingBottom: '20px' }}>
-          <p>cal.dudu-works.com v1.0 - 수업용 기본 실습 앱</p>
+          <p>Duduworks - iny Calendar · 수업용 기본 실습 앱</p>
           <p>기본값: 42슬롯(14일 × 3시간대), 고객 1-3개 희망, 어드민 수동 확정</p>
         </div>
       </div>
@@ -287,7 +412,7 @@ const App: React.FC = () => {
     <div className="container">
       <div className="header">
         <div>
-          <h1>cal.dudu-works.com</h1>
+          <h1>Duduworks - iny Calendar</h1>
           <div className="reference-time">
             기준 시각: {REFERENCE_TIME.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (고정)
           </div>
@@ -343,7 +468,7 @@ const App: React.FC = () => {
 
       <hr style={{ margin: '40px 0', borderColor: '#ddd' }} />
       <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', paddingBottom: '20px' }}>
-        <p>cal.dudu-works.com v1.0 - 수업용 기본 실습 앱</p>
+        <p>Duduworks - iny Calendar · 수업용 기본 실습 앱</p>
         <p>기본값: 42슬롯(14일 × 3시간대), 고객 1-3개 희망, 어드민 수동 확정</p>
       </div>
     </div>

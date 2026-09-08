@@ -307,7 +307,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const renderAside = () => (
     <aside className="pane-side">
       <div className="svc">
-        <p className="svc-host">cal.dudu-works</p>
+        <p className="svc-host">Duduworks</p>
         <h2 className="svc-name">상담 예약</h2>
         <dl className="svc-meta">
           <dt>소요</dt>
