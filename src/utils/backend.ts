@@ -40,6 +40,10 @@ export interface Backend {
   // 고객 식별자를 사람이 읽을 이름으로 바꾸는 표. 어드민 화면 표시용이다.
   // 로컬 모드는 고객 코드가 이미 'C01' 이라 빈 표를 준다.
   getCustomerLabels(): Promise<Record<string, string>>;
+  // 슬롯별로 지금 몇 명이 대기 중인지. slotId → 인원 수.
+  // 접수는 점유가 아니라서 한 슬롯에 여러 명이 겹친다. 그 사실을 고르기 전에 보여준다.
+  // 인원 수만 돌아오고 누구인지는 돌아오지 않는다. 실패하면 빈 표라 화면은 그대로 뜬다.
+  getSlotDemand(): Promise<Record<string, number>>;
   submitRequest(customerId: string, slotIds: string[], operationId: string): Promise<MutationResult>;
   confirmRequest(
     requestId: string,
@@ -83,6 +87,23 @@ export class LocalBackend implements Backend {
 
   async getCustomerLabels() {
     return {};
+  }
+
+  // 로컬 모드는 데이터가 전부 한 브라우저 안에 있어 직접 센다.
+  // Supabase 쪽 slot_demand() 와 같은 기준이다 — 미확정(received) 신청, 열린 슬롯만.
+  async getSlotDemand() {
+    const state = this.db.getState();
+    const openRequestIds = new Set(
+      state.requests.filter(r => r.status === 'received').map(r => r.id)
+    );
+
+    const demand: Record<string, number> = {};
+    state.candidates.forEach(c => {
+      if (!openRequestIds.has(c.requestId)) return;
+      if (state.slots[c.slotId]?.status !== 'available') return;
+      demand[c.slotId] = (demand[c.slotId] || 0) + 1;
+    });
+    return demand;
   }
 
   // 로컬 모드에는 캘린더 연동이 없다.
@@ -326,6 +347,19 @@ export class SupabaseBackend implements Backend {
     // 정책을 아직 실행하지 않았으면 조용히 비운다. 타임라인만 안 보이고 화면은 산다.
     if (error) return [];
     return ((data as unknown as LogRow[] | null) || []).map(toLog);
+  }
+
+  async getSlotDemand(): Promise<Record<string, number>> {
+    // 06_slot_demand.sql 을 아직 실행하지 않았으면 조용히 비운다.
+    // 대기 인원은 곁들이는 정보라, 없다고 슬롯표까지 못 뜨게 만들면 안 된다.
+    const { data, error } = await this.client().rpc('slot_demand');
+    if (error) return {};
+
+    const map: Record<string, number> = {};
+    ((data as unknown as Array<{ slot_id: string; waiting: number }> | null) || []).forEach(row => {
+      if (row?.slot_id) map[row.slot_id] = Number(row.waiting) || 0;
+    });
+    return map;
   }
 
   async getCustomerLabels(): Promise<Record<string, string>> {

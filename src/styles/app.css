@@ -1,13 +1,52 @@
+/* cal.dudu-works.com 스타일.
+ *
+ * 벤치마킹한 예약 도구들(Cal.com·Calendly·Setmore·TidyCal)의 공통점은 화려함이 아니라
+ * 절제였다. 흰 카드, 얇은 1px 선, 넉넉한 여백, 강조색 하나. 그 선만 가져왔다.
+ *
+ * PRD 「디자인 범위」의 뜻은 지킨다 — 기본 HTML 요소만 쓰고
+ * 아이콘·이미지·차트·Tailwind·디자인 시스템은 넣지 않는다.
+ * 여기서 하는 일은 이미 있는 요소의 색·간격·정렬을 고르게 맞추는 것뿐이다.
+ */
+
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #6b7280;
+
+  --line: #e5e7eb;
+  --line-2: #d1d5db;
+
+  /* 강조색은 하나만 쓴다. 1순위 배지에 이미 쓰던 값을 그대로 이어받는다. */
+  --accent: #2446ad;
+  --accent-ink: #1b3585;
+  --accent-soft: #eef2fb;
+
+  --ok: #0f7b3f;
+  --ok-soft: #e8f5ec;
+  --warn: #8a5a00;
+  --warn-soft: #fff6e0;
+  --danger: #b3261e;
+  --danger-soft: #fdecea;
+
+  --r: 8px;
+  --r-sm: 6px;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   margin: 0;
   padding: 0;
-  background: #f9f9f9;
-  color: #333;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -15,206 +54,444 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 28px 20px 64px;
 }
 
+h3 {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+h4 {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+/* ── 머리말 ────────────────────────────────── */
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #ddd;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
 }
 
 .header h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 21px;
+  letter-spacing: -0.02em;
 }
 
 .mode-badge {
   display: inline-block;
-  padding: 6px 12px;
-  background: #007bff;
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.mode-badge.local {
-  background: #6c757d;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--line-2);
+  background: var(--card);
+  color: var(--ink-2);
+  white-space: nowrap;
 }
 
 .mode-badge.supabase {
-  background: #28a745;
+  border-color: #a7d3b6;
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .reference-time {
   display: block;
-  margin-top: 10px;
+  margin-top: 5px;
   font-size: 12px;
-  color: #666;
+  color: var(--ink-3);
 }
 
 .role-selector {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.role-selector button {
-  padding: 8px 16px;
-  border: 2px solid #ddd;
-  background: white;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: all 0.2s;
+/* ── 단계 표시 ──────────────────────────────
+ * Zoho 는 왼쪽에 Service·Date,Time&Staff·Your Info 를, Setmore 는 Summary 를
+ * 화면 내내 띄워 지금 어디인지 알려준다. 우리 화면도 네 단계인데 표시가 없었다.
+ * 새 요소를 만들지 않고 기본 목록으로만 세운다. */
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  font-size: 12.5px;
 }
 
-.role-selector button.active {
-  border-color: #007bff;
-  background: #007bff;
-  color: white;
-  font-weight: bold;
+.stepper li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-3);
 }
 
-.role-selector button:hover:not(.active) {
-  border-color: #007bff;
+.stepper li .n {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
 }
 
-/* 표 스타일 */
+.stepper li.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.stepper li.on .n {
+  background: var(--accent);
+  color: #fff;
+}
+
+.stepper li.done {
+  color: var(--ink-2);
+}
+
+.stepper li.done .n {
+  background: var(--ok);
+  color: #fff;
+}
+
+/* ── 두 칸 레이아웃 ──────────────────────────
+ * Cal.com·TidyCal·Setmore·Microsoft·Zoho 캡처가 전부 같은 뼈대였다.
+ * 왼쪽에 "무엇을 예약하는가"를 붙박이로 두고 오른쪽에서 고르게 한다. */
+.pane {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.pane-side {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.pane-main {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .pane {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .pane-side {
+    position: static;
+  }
+}
+
+.svc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px 20px;
+}
+
+.svc-host {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.svc-name {
+  margin: 2px 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.svc-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 14px;
+  margin: 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.svc-meta dt {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.svc-meta dd {
+  margin: 0;
+  color: var(--ink);
+}
+
+.svc-how {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 16px 20px;
+}
+
+.svc-how h3 {
+  margin: 0 0 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.svc-how ol {
+  margin: 0;
+  padding-left: 17px;
+  display: grid;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+/* ── 표 ────────────────────────────────────── */
+.table-container {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+  padding: 14px 16px 4px;
+  margin-bottom: 20px;
+}
+
 .slots-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  margin-bottom: 20px;
-  border: 1px solid #ddd;
-  overflow-x: auto;
-}
-
-.slots-table thead {
-  background: #f0f0f0;
+  background: var(--card);
+  margin-bottom: 12px;
 }
 
 .slots-table th,
 .slots-table td {
-  padding: 12px;
+  padding: 9px 12px;
   text-align: left;
-  border: 1px solid #ddd;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
 }
 
 .slots-table th {
-  font-weight: bold;
-  background: #f0f0f0;
   position: sticky;
   top: 0;
+  z-index: 1;
+  background: var(--card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--line-2);
+  white-space: nowrap;
 }
 
-.slots-table tbody tr:hover {
-  background: #f9f9f9;
+.slots-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.slots-table tbody tr:hover td {
+  background: #fafbfc;
+}
+
+.slots-table td:first-child {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 칸 전체를 누를 수 있게 한다. 체크박스만 겨냥하지 않아도 되도록. */
+.slot-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  background: var(--card);
+  white-space: nowrap;
+}
+
+.slot-pick:hover {
+  border-color: var(--line-2);
+  background: #fafbfc;
+}
+
+.slot-pick.picked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.slot-pick.closed {
+  cursor: not-allowed;
+  color: var(--ink-3);
+  background: #f7f8f9;
+}
+
+.slot-pick.full {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .slot-checkbox {
-  cursor: pointer;
-  width: 18px;
-  height: 18px;
-}
-
-.slot-button {
-  padding: 8px 12px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.slot-button:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.slot-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+  cursor: inherit;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .slot-status {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .slot-status.available {
-  background: #d4edda;
-  color: #155724;
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .slot-status.confirmed {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
-/* 버튼 */
+/* 대기 인원 배지. TidyCal 의 Seats left 자리에 해당한다. */
+.badge-wait {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.badge-wait.hot {
+  border-color: #e0c089;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* 표 위 요약 줄. 42칸이 한 판에 펼쳐져 있어서 지금 상태를 글로 한 번 짚어준다. */
+.table-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.table-note b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+/* ── 버튼 ──────────────────────────────────── */
 .btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: all 0.2s;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
 .btn-primary {
-  background: #007bff;
-  color: white;
+  background: var(--accent);
+  color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--accent-ink);
 }
 
 .btn-secondary {
-  background: #6c757d;
-  color: white;
+  background: var(--card);
+  color: var(--ink-2);
+  border-color: var(--line-2);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #5a6268;
+  background: #f7f8f9;
+  color: var(--ink);
 }
 
 .btn-success {
-  background: #28a745;
-  color: white;
+  background: var(--ok);
+  color: #fff;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #218838;
+  background: #0c6533;
+}
+
+.btn-warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: #e0c089;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #fdefd2;
 }
 
 .btn-danger {
-  background: #dc3545;
-  color: white;
+  background: var(--danger);
+  color: #fff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #c82333;
+  background: #96201a;
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* 폼 */
+.btn:focus-visible,
+.slot-pick:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── 폼 ────────────────────────────────────── */
 .form-group {
   margin-bottom: 16px;
   display: flex;
@@ -223,61 +500,71 @@ body {
 
 .form-group label {
   margin-bottom: 6px;
-  font-weight: bold;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
   font-size: 14px;
   font-family: inherit;
+  color: var(--ink);
+  background: var(--card);
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(36, 70, 173, 0.12);
 }
 
-/* 메시지 */
+/* ── 알림 ──────────────────────────────────── */
 .alert {
-  padding: 12px 16px;
-  border-radius: 4px;
+  padding: 12px 15px;
+  border-radius: var(--r-sm);
   margin-bottom: 16px;
-  border-left: 4px solid #ddd;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  font-size: 13.5px;
 }
 
 .alert-success {
-  background: #d4edda;
-  color: #155724;
-  border-left-color: #28a745;
+  background: var(--ok-soft);
+  color: #0b5c30;
+  border-color: #bfe0cb;
+  border-left-color: var(--ok);
 }
 
 .alert-error {
-  background: #f8d7da;
-  color: #721c24;
-  border-left-color: #dc3545;
+  background: var(--danger-soft);
+  color: #8c1d18;
+  border-color: #f2c4c0;
+  border-left-color: var(--danger);
 }
 
 .alert-info {
-  background: #d1ecf1;
-  color: #0c5460;
-  border-left-color: #17a2b8;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: #ccd8f2;
+  border-left-color: var(--accent);
 }
 
 .alert-warning {
-  background: #fff3cd;
-  color: #856404;
-  border-left-color: #ffc107;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: #ecd6a8;
+  border-left-color: #d29b1f;
 }
 
-/* 목록 */
+/* ── 목록 ──────────────────────────────────── */
 .list {
   list-style: none;
   padding: 0;
@@ -285,22 +572,27 @@ body {
 }
 
 .list li {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  background: white;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  margin-bottom: 7px;
+  background: var(--card);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+}
+
+.list li:last-child {
+  margin-bottom: 0;
 }
 
 .list li:hover {
-  background: #f9f9f9;
-  border-color: #999;
+  border-color: var(--line-2);
 }
 
-/* 그리드 */
+/* ── 그리드 ────────────────────────────────── */
 .grid {
   display: grid;
   gap: 20px;
@@ -308,6 +600,10 @@ body {
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 20px 14px 48px;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
@@ -322,25 +618,14 @@ body {
     width: 100%;
   }
 
-  .slots-table {
-    font-size: 12px;
-  }
-
   .slots-table th,
   .slots-table td {
     padding: 8px;
+    font-size: 12.5px;
   }
 }
 
-/* 가로 스크롤 컨테이너 */
-.table-container {
-  overflow-x: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-}
-
-/* 로딩 상태 */
+/* ── 상태 ──────────────────────────────────── */
 .loading {
   opacity: 0.6;
   pointer-events: none;
@@ -350,8 +635,8 @@ body {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #007bff;
+  border: 2px solid var(--line);
+  border-top: 2px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

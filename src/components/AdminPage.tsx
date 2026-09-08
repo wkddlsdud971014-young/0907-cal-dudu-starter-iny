@@ -38,9 +38,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
   } | null>(null);
 
   // 표시용 이름. 이메일을 못 구하면 uid 앞부분만 보여 표가 밀리지 않게 한다.
+  // 배포판의 체험 참여자는 익명 로그인이라 이메일이 아예 없다. 그때는 uid 앞자리로 구분한다.
   const nameOf = (customerId: string) =>
     customerLabels[customerId] ||
-    (customerId.length > 12 ? `${customerId.slice(0, 8)}…` : customerId);
+    (customerId.length > 12 ? `체험 ${customerId.slice(0, 8)}` : customerId);
+
+  // 슬롯마다 몇 건이 겹쳐 있는지. 어드민은 이미 전체 신청을 받아 두었으므로
+  // 고객 화면이 쓰는 slot_demand() 를 부르지 않고 여기서 직접 센다.
+  // 기준은 같다 — 미확정(received) 신청, 아직 열린 슬롯만.
+  const slotDemand = React.useMemo(() => {
+    const demand: Record<string, number> = {};
+    requests.forEach(item => {
+      if (item.request.status !== 'received') return;
+      item.candidates.forEach(c => {
+        if (slots[c.slotId]?.status !== 'available') return;
+        demand[c.slotId] = (demand[c.slotId] || 0) + 1;
+      });
+    });
+    return demand;
+  }, [requests, slots]);
 
   // 확정 실패 후 다시 누를 때 같은 작업 ID를 보내야 서버가 중복 확정을 걸러낸다.
   // 대상(요청·슬롯)이 바뀌면 다른 작업이므로 새로 발급한다.
@@ -426,6 +442,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ backend, adminId }) => {
                           <span style={{ marginLeft: '10px', fontSize: '12px' }}>
                             {isAvailable ? '(가능)' : '(마감)'}
                           </span>
+                          {/* 이 슬롯을 몇 건이 함께 노리는지. 여럿이 겹친 자리를 먼저 처리하면
+                              한 번 확정할 때마다 재선택으로 밀려나는 사람이 줄어든다. */}
+                          {isAvailable && (slotDemand[c.slotId] || 0) > 1 && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#b26a00' }}>
+                              경합 {slotDemand[c.slotId]}건
+                            </span>
+                          )}
                         </span>
                       </li>
                     );

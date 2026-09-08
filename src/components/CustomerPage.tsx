@@ -32,6 +32,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   const [loading, setLoading] = useState(false);
   // 내 신청의 처리 이력. 진행 타임라인을 그리는 데 쓴다.
   const [myLogs, setMyLogs] = useState<OperationLog[]>([]);
+  // 슬롯별 대기 인원. 접수가 점유가 아니라는 사실을 고르기 전에 알려주는 값이다.
+  const [slotDemand, setSlotDemand] = useState<Record<string, number>>({});
 
   // 작업 ID는 "한 번의 제출 시도"를 가리키는 이름이다. 실패해서 다시 누를 때 같은 값을
   // 보내야 서버가 중복 저장을 걸러낸다. 매번 새로 만들면 재시도가 별개 작업이 되어
@@ -110,6 +112,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         setMyLogs(await backend.getMyLogs(customerId));
       } catch {
         setMyLogs([]);
+      }
+
+      // 대기 인원도 곁들이는 정보다. 06_slot_demand.sql 을 아직 실행하지 않았거나
+      // 조회가 막혀도 슬롯표와 신청 현황은 그대로 보여야 한다.
+      try {
+        setSlotDemand(await backend.getSlotDemand());
+      } catch {
+        setSlotDemand({});
       }
       setError('');
     } catch (err: any) {
@@ -240,7 +250,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>
           {view.overdue
             ? '회신 기한이 지났습니다'
-            : `${shortKst(view.deadline)}까지 회신 예정`}
+            : `${shortKst(view.deadline)} KST까지 회신 예정`}
           <span style={{ fontWeight: 'normal', color: '#555', marginLeft: '8px' }}>
             {view.overdue ? '' : view.remainingLabel}
           </span>
@@ -273,6 +283,127 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         <div style={{ fontSize: '12px', color: '#777', marginTop: '10px' }}>
           접수 후 {RESPONSE_SLA_HOURS}시간 안에 회신합니다. 기한까지는 다시 확인하지 않으셔도 됩니다.
         </div>
+      </div>
+    );
+  };
+
+  // 왼쪽에 "무엇을 예약하는가"를 고정해 두는 패널.
+  //
+  // Cal.com·TidyCal·Setmore·Microsoft·Zoho 캡처가 전부 같은 구조다.
+  // 왼쪽에 서비스·소요시간·시간대를 붙박이로 두고 오른쪽에서 고르게 한다.
+  // 우리 화면에는 그 왼쪽이 아예 없어서, 무엇을 신청하는 중인지 알려주는 문장이
+  // 화면 어디에도 없었다.
+  const renderAside = () => (
+    <aside className="pane-side">
+      <div className="svc">
+        <p className="svc-host">cal.dudu-works</p>
+        <h2 className="svc-name">상담 예약</h2>
+        <dl className="svc-meta">
+          <dt>소요</dt>
+          <dd>1시간</dd>
+          <dt>시간대</dt>
+          <dd>한국 표준시 (KST)</dd>
+          <dt>예약 기간</dt>
+          <dd>9월 9일 ~ 9월 22일</dd>
+          <dt>회신</dt>
+          <dd>신청 후 {RESPONSE_SLA_HOURS}시간 이내</dd>
+        </dl>
+      </div>
+
+      <div className="svc-how">
+        <h3>어떻게 진행되나요</h3>
+        <ol>
+          <li>원하는 시간을 최대 3개까지 고릅니다. 먼저 고른 것이 1순위입니다.</li>
+          <li>신청해도 자리가 잡히지는 않습니다. 다른 분과 같은 시간을 신청할 수 있습니다.</li>
+          <li>담당자가 희망 중 하나를 확정하면 그 시간이 마감됩니다.</li>
+          <li>희망이 모두 마감되면 다시 고르실 수 있습니다.</li>
+        </ol>
+      </div>
+    </aside>
+  );
+
+  // 지금 어느 단계인지. Zoho 는 Service·Date,Time&Staff·Your Info 를 왼쪽에 세워두고,
+  // Setmore 는 Summary 로 같은 일을 한다. 우리 화면도 네 단계인데 표시가 없었다.
+  const renderStepper = () => {
+    const steps =
+      stage === 'reselect'
+        ? [
+            { key: 'pick', label: '다시 고르기' },
+            { key: 'done', label: '검토 대기' },
+          ]
+        : [
+            { key: 'select', label: '시간 고르기' },
+            { key: 'confirm', label: '최종 확인' },
+            { key: 'view', label: '검토 대기' },
+          ];
+
+    const nowIndex = steps.findIndex(s =>
+      stage === 'reselect' ? s.key === 'pick' : s.key === stage
+    );
+
+    return (
+      <ol className="stepper">
+        {steps.map((s, i) => (
+          <li key={s.key} className={i === nowIndex ? 'on' : i < nowIndex ? 'done' : ''}>
+            <span className="n">{i < nowIndex ? '✓' : i + 1}</span>
+            {s.label}
+          </li>
+        ))}
+      </ol>
+    );
+  };
+
+  // 화면 맨 위에 상태 한 줄. To-be v2 ⑥이 여기 들어간다.
+  //
+  // 진행 타임라인은 이미 카드 안에 있지만 본문 중간이라, 앱을 열 때마다 눈으로 찾아야 했다.
+  // 상태를 맨 위 한 줄로 올려서 열자마자 읽고 닫을 수 있게 한다.
+  // 새 정보를 만들지 않고 아래 카드에 이미 있는 값을 끌어올리기만 한다.
+  const renderStatusBanner = () => {
+    const latest = customerRequests[customerRequests.length - 1];
+    if (!latest) return null;
+
+    const { status, createdAt, confirmedSlotId } = latest.request;
+
+    let tone = { bg: '#eef3fb', border: '#c7d6ef', label: '#1a376e' };
+    let headline = '';
+    let detail = '';
+
+    if (status === 'confirmed') {
+      const slot = confirmedSlotId ? slots[confirmedSlotId] : undefined;
+      const time = TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel ?? '';
+      tone = { bg: '#e8f5e9', border: '#93c79a', label: '#1b5e20' };
+      headline = '예약이 확정되었습니다';
+      detail = slot ? `${slot.date} ${time} · 한국 표준시(KST)` : '';
+    } else if (status === 'needs_reselection') {
+      tone = { bg: '#fff3cd', border: '#e0c068', label: '#7a5b00' };
+      headline = '재선택이 필요합니다';
+      detail = '희망하신 시간이 모두 마감되었습니다. 아래에서 다시 골라주세요.';
+    } else {
+      const view = deadlineView(createdAt);
+      tone = view.overdue
+        ? { bg: '#fff3cd', border: '#e0c068', label: '#7a5b00' }
+        : { bg: '#eef3fb', border: '#c7d6ef', label: '#1a376e' };
+      headline = '검토 대기 중';
+      detail = view.overdue
+        ? `회신 기한이 지났습니다 · 접수 후 ${elapsedLabel(createdAt)}`
+        : `${shortKst(view.deadline)} KST까지 회신 · ${view.remainingLabel} · ${elapsedLabel(createdAt)}`;
+    }
+
+    return (
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '12px 16px',
+          background: tone.bg,
+          border: `1px solid ${tone.border}`,
+          borderLeft: `4px solid ${tone.label}`,
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontWeight: 'bold', fontSize: '15px', color: tone.label }}>{headline}</div>
+        {detail && (
+          <div style={{ fontSize: '13px', color: '#444', marginTop: '3px' }}>{detail}</div>
+        )}
       </div>
     );
   };
@@ -337,7 +468,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
   };
 
   return (
-    <div className="customer-page">
+    <div className="customer-page pane">
+      {renderAside()}
+
+      <div className="pane-main">
       <div className="form-group">
         {/* 고객 코드는 로컬 모드에서만 손으로 정한다.
             Supabase 모드에서는 로그인 계정이 곧 고객이고 화면 위에 이메일이 이미 떠 있어서,
@@ -359,6 +493,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
+      {/* 상태 배너는 어느 단계에서나 맨 위에 있다. 신청이 아직 없으면 보일 게 없어 비운다. */}
+      {renderStatusBanner()}
+
+      {renderStepper()}
+
       {stage === 'select' && (
         <div>
           <h3>슬롯 선택 (1~3개)</h3>
@@ -371,6 +510,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             onToggle={handleSlotToggle}
             mode="select"
             maxSelect={3}
+            demand={slotDemand}
           />
 
           <div style={{ marginBottom: '20px' }}>
@@ -423,8 +563,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
           <div className="alert alert-info" style={{ fontSize: '14px' }}>
             제출 후 <strong>{RESPONSE_SLA_HOURS}시간 안에 회신</strong>합니다.
             그때까지 기다리시면 되고, 진행 상태는 이 화면에서 계속 확인할 수 있습니다.
+            모든 시각은 한국 표준시(KST) 기준입니다.
           </div>
-          <SlotTable slots={slots} selectedSlots={selectedSlots} onToggle={() => {}} mode="view" />
+          {/* 여기서 42칸 표를 다시 펼치지 않는다.
+              고를 수 없는 표라 읽을 이유가 없고, 고른 것은 바로 아래에 그대로 있다.
+              Setmore·Zoho 도 확인 단계에서는 Summary 만 보여준다. */}
 
           <div style={{ marginBottom: '20px' }}>
             <h4>최종 선택 (우선순위 순)</h4>
@@ -531,9 +674,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             {isAvailable
                               ? '(가능)'
                               : slot?.confirmedAt
-                                ? `(${shortKst(new Date(slot.confirmedAt))} 마감)`
+                                ? `(${shortKst(new Date(slot.confirmedAt))} KST 마감)`
                                 : '(마감)'}
                           </span>
+                          {/* 아직 열려 있는 후보에만 경쟁 상황을 보여준다.
+                              마감된 후보는 결과가 이미 나와서 대기 수가 의미 없다. */}
+                          {isAvailable && (slotDemand[c.slotId] || 0) > 1 && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#b26a00' }}>
+                              나 포함 {slotDemand[c.slotId]}명 대기
+                            </span>
+                          )}
                         </span>
                       </li>
                     );
@@ -582,6 +732,38 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
               이전 신청의 슬롯이 모두 마감되었습니다. 다시 선택해주세요.
             </p>
 
+            {/* 원래 무엇을 골랐고 언제 닫혔는지를 재선택하는 내내 옆에 둔다. To-be v2 ⑤.
+                고객은 여기서 개인 달력을 다녀오기 때문에, 돌아왔을 때 이전 선택이
+                화면에 남아 있지 않으면 맥락을 다시 세워야 한다. */}
+            <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f7f7f7', border: '1px solid #ddd', borderRadius: '4px' }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: '14px' }}>이전에 신청하신 시간</h4>
+              <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#666' }}>
+                신청 #{latest.request.version} · 접수 {shortKst(new Date(latest.request.createdAt))} KST
+              </p>
+              <ul className="list" style={{ margin: 0 }}>
+                {latest.candidates.map((c, cidx) => {
+                  const slot = slots[c.slotId];
+                  return (
+                    <li key={c.id}>
+                      <span>
+                        <b style={{
+                          display: 'inline-block', minWidth: '52px', marginRight: '8px',
+                          padding: '1px 7px', fontSize: '12px',
+                          background: '#dde3ee', color: '#333',
+                        }}>{cidx + 1}순위</b>
+                        {slot?.date} {TIME_SLOTS.find(t => t.label === slot?.timeLabel)?.displayLabel}
+                        <span style={{ marginLeft: '10px', fontSize: '12px', color: '#dc3545' }}>
+                          {slot?.confirmedAt
+                            ? `(${shortKst(new Date(slot.confirmedAt))} KST 마감)`
+                            : '(마감)'}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
             {recommendedSlotIds.length > 0 && (
               <div style={{ marginBottom: '20px', padding: '16px', background: '#e8f5e9', borderRadius: '4px', border: '1px solid #4caf50' }}>
                 <h4 style={{ color: '#2e7d32', marginTop: 0 }}>✨ 추천 슬롯 (3개)</h4>
@@ -627,6 +809,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             onToggle={handleSlotToggle}
             mode="select"
             maxSelect={3}
+            demand={slotDemand}
           />
 
           <div style={{ marginBottom: '20px' }}>
@@ -680,6 +863,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         </div>
         );
       })()}
+      </div>
     </div>
   );
 };

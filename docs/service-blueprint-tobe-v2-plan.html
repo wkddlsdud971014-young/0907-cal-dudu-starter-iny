@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>To-be v2 계획 — 벤치마킹 반영안</title>
+<style>*{box-sizing:border-box}body{margin:0}img{max-width:100%}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* As-is·To-be 두 장과 같은 종이다. 발표에서 나란히 넘기므로
+     색과 치수를 바꾸지 않는다. 뜻만 하나 추가한다.
+     보라 = 어제 만들어 둔 칸, 초록 = 오늘 새로 만들 칸(아직 없음). */
+  :root{
+    color-scheme:light;
+    --ground:#ffffff;
+    --surface:#ffffff;
+    --surface-sunk:#f1f4f8;
+    --ink:#0b0f15;
+    --ink-soft:#232c37;
+    --ink-faint:#48525e;
+    --rule:#c9d1db;
+    --rule-strong:#8b96a4;
+    --accent:#16337f;
+    --accent-soft:#e7ecf8;
+    --warn:#9c3a17;
+    --warn-soft:#fbe8e0;
+    --wait:#71590f;
+    --wait-soft:#faf0d2;
+    --pick:#1a376e;
+    --pick-soft:#dde7f7;
+    --edit:#0c5647;
+    --edit-soft:#d8ece6;
+    --ship:#553192;
+    --ship-soft:#ece4f9;
+    --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1520px;margin:0 auto;padding:44px 24px 72px;}
+
+  /* ── header ── */
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 12px;
+  }
+  h1{
+    font-size:clamp(27px,4vw,38px);font-weight:700;letter-spacing:-.02em;
+    margin:0 0 10px;text-wrap:balance;line-height:1.25;
+  }
+  .lede{font-size:16px;color:var(--ink-soft);margin:0;max-width:64ch;}
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:22px;
+    padding-top:18px;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:13px;color:var(--ink-soft);
+  }
+  .meta b{color:var(--ink-soft);font-weight:500;}
+
+  /* ── pick callout ── */
+  .pick{
+    margin:34px 0 40px;padding:22px 24px;
+    background:var(--pick-soft);border-left:3px solid var(--pick);
+    display:grid;gap:10px;
+  }
+  .pick-tag{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--pick);font-weight:500;
+  }
+  .pick h2{font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em;}
+  .pick p{margin:0;font-size:14.5px;color:var(--ink-soft);max-width:74ch;}
+
+  h2.sec{font-size:15px;font-weight:600;letter-spacing:.02em;margin:0 0 4px;}
+  .sec-note{font-size:14px;color:var(--ink-soft);margin:0 0 16px;max-width:82ch;}
+
+  /* ── blueprint ── */
+  .scroller{overflow-x:auto;padding-bottom:6px;}
+  .bp{
+    display:grid;
+    grid-template-columns:104px repeat(6,minmax(0,1fr));
+    background:var(--rule);
+    gap:1px;
+    border:1px solid var(--rule);
+  }
+  .bp > *{background:var(--surface);padding:13px 14px;}
+  .rowlabel{
+    background:var(--surface-sunk);
+    font-size:13px;font-weight:600;color:var(--ink-soft);
+    display:flex;align-items:center;letter-spacing:.01em;
+  }
+  .colhead{background:var(--surface-sunk);display:grid;gap:3px;align-content:start;}
+  .colhead .n{font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+  .colhead .t{font-size:14.5px;font-weight:600;letter-spacing:-.01em;}
+  .colhead .d{font-family:var(--mono);font-size:12px;color:var(--ink-faint);}
+  .cell{font-size:13.6px;color:var(--ink-soft);line-height:1.6;}
+  .cell.none{color:var(--ink-faint);}
+  code{font-family:var(--mono);font-size:12px;background:var(--surface-sunk);
+       padding:1px 4px;color:var(--ink);overflow-wrap:anywhere;}
+
+  @media(max-width:1180px){
+    .cell{font-size:12.6px;}
+    .colhead .t{font-size:13px;}
+    .bp > *{padding:10px 10px;}
+  }
+
+  .line{
+    grid-column:1/-1;background:var(--surface-sunk);
+    padding:6px 12px;display:flex;align-items:center;gap:12px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);font-weight:500;
+  }
+  .line::after{content:"";flex:1;height:0;border-top:1px dashed var(--rule-strong);}
+  .line.solid::after{border-top-style:solid;}
+
+  /* emotion chips */
+  .emo{display:flex;align-items:center;gap:7px;margin-top:6px;}
+  .emo b{
+    font-family:var(--mono);font-size:15px;font-weight:500;
+    width:26px;height:26px;display:grid;place-items:center;
+    background:var(--surface-sunk);color:var(--ink);
+  }
+  .emo span{font-size:12.5px;color:var(--ink-faint);}
+  .emo.up b{background:var(--edit-soft);color:var(--edit);font-weight:600;}
+  .emo .was{font-family:var(--mono);font-size:12px;color:var(--ink-faint);text-decoration:line-through;}
+  .emo .to{font-family:var(--mono);font-size:12px;color:var(--ink-faint);}
+  .emo.hold b{background:var(--ship-soft);color:var(--ship);font-weight:600;}
+
+  /* selected column emphasis */
+  .bp .sel{box-shadow:inset 0 0 0 2px var(--pick);}
+  .colhead.sel .t{color:var(--pick);}
+
+  /* 어제 만든 칸 = 보라 */
+  .cell.v1{background:var(--ship-soft);box-shadow:inset 4px 0 0 var(--ship);}
+  .cell.v1.sel{box-shadow:inset 4px 0 0 var(--ship),inset 0 0 0 2px var(--pick);}
+  .cell.v1 .tag{color:var(--ship);}
+
+  /* 오늘 새로 만들 칸 = 초록 */
+  .cell.plan{background:var(--edit-soft);box-shadow:inset 4px 0 0 var(--edit);}
+  .cell.plan.sel{box-shadow:inset 4px 0 0 var(--edit),inset 0 0 0 2px var(--pick);}
+  .cell.plan .tag{color:var(--edit);}
+
+  .tag{
+    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+    text-transform:uppercase;font-weight:600;margin-bottom:5px;
+  }
+  .src{
+    display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+    padding:1px 6px;margin-top:7px;border:1px solid var(--edit);color:var(--edit);
+  }
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 20px;margin:14px 0 0;
+    font-size:13.5px;color:var(--ink-soft);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .swatch{width:13px;height:13px;flex:none;}
+
+  /* ── 참고 4건 ── */
+  .refs{display:grid;gap:14px;margin-top:14px;}
+  @media(min-width:900px){.refs{grid-template-columns:repeat(2,1fr);}}
+  .ref{
+    background:var(--surface);border:1px solid var(--rule);
+    border-left:4px solid var(--edit);
+    padding:18px 20px;display:grid;gap:9px;align-content:start;
+  }
+  .ref.risk{border-left-color:var(--warn);}
+  .ref .k{
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--edit);
+  }
+  .ref.risk .k{color:var(--warn);}
+  .ref h3{font-size:15.5px;font-weight:600;margin:0;letter-spacing:-.01em;line-height:1.4;}
+  .ref dl{margin:0;display:grid;grid-template-columns:78px 1fr;gap:6px 12px;font-size:13.6px;}
+  .ref dt{color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;padding-top:3px;}
+  .ref dd{margin:0;color:var(--ink-soft);line-height:1.55;}
+  .ref dd b{color:var(--ink);font-weight:600;}
+  .ref a{color:var(--accent);font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere;}
+
+  /* ── 표 ── */
+  table{border-collapse:collapse;width:100%;font-size:14px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top;}
+  th{
+    font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;border-bottom:1px solid var(--rule-strong);
+  }
+  td:first-child{color:var(--ink);font-weight:500;white-space:nowrap;}
+  .tbl{background:var(--surface);border:1px solid var(--rule);overflow-x:auto;}
+  tr:last-child td{border-bottom:none;}
+  .num{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);white-space:nowrap;}
+
+  /* ── 불변 확인 ── */
+  .keep{
+    background:var(--surface);border:1px solid var(--rule);
+    border-left:4px solid var(--rule-strong);padding:18px 20px;margin-top:14px;
+  }
+  .keep ul{margin:0;padding-left:19px;display:grid;gap:7px;font-size:13.8px;color:var(--ink-soft);}
+  .keep li b{color:var(--ink);font-weight:600;}
+
+  section{margin-top:46px;}
+  footer{
+    margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
+    font-size:13.5px;color:var(--ink-soft);max-width:78ch;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <p class="eyebrow">Service Blueprint · To-be v2 (계획)</p>
+  <h1>마감을 사후 통보에서 사전 예고로 바꾼다</h1>
+  <p class="lede">
+    어제 To-be에서 ③ 마감확인만 <b>해소</b>가 아니라 <b>완화</b>로 남았다.
+    이 장은 그 한 칸을 닫기 위해 벤치마킹 4건을 어디에 붙일지 적은 계획이다.
+    아직 만들지 않았다.
+  </p>
+
+  <div class="meta">
+    <span><b>페르소나</b> 손지은 · 37세 · 서점 인수 준비</span>
+    <span><b>바탕</b> To-be v1 (2026-09-07)</span>
+    <span><b>근거</b> D36 Benchmark 17개 서비스 캡처</span>
+    <span><b>상태</b> 미착수 — 승인 후 진행</span>
+  </div>
+
+  <div class="pick">
+    <p class="pick-tag">v1 → v2 무엇이 다른가</p>
+    <h2>새 기능을 얹지 않는다. 이미 DB에 있는 사실을 고객 쪽으로 한 겹 더 연다.</h2>
+    <p>
+      v1은 <b>기다림에 기한을 붙였다</b>(회신 기한·경과 시간·진행 타임라인).
+      v2는 <b>마감을 미리 읽게 한다</b>. 접수는 점유가 아니므로 한 슬롯에 여러 명이 겹칠 수 있는데,
+      지금 고객은 그 사실을 마감된 뒤에야 안다. 겹친 수를 신청 시점에 보여주면
+      ③의 “당황”이 “예상했음”으로 바뀐다. 고정 규칙은 한 줄도 건드리지 않는다.
+    </p>
+  </div>
+
+  <section>
+    <h2 class="sec">To-be v2 블루프린트 (계획)</h2>
+    <p class="sec-note">
+      같은 판, 같은 여섯 단계다. <b>보라 칸은 어제 만들어 동작을 확인한 것</b>이고,
+      <b>초록 칸이 이번에 새로 만들 것</b>이다. 초록 칸에는 어느 서비스를 보고 정했는지 출처를 붙였다.
+      흰 칸은 그대로 둔다.
+    </p>
+
+    <div class="scroller">
+      <div class="bp">
+
+        <div class="rowlabel" style="background:var(--surface);"></div>
+        <div class="colhead"><span class="n">①</span><span class="t">상담신청</span><span class="d">8/31 19:00</span></div>
+        <div class="colhead"><span class="n">②</span><span class="t">상태확인</span><span class="d">9/1 아침~낮</span></div>
+        <div class="colhead sel"><span class="n">③</span><span class="t">마감확인</span><span class="d">9/1 오후</span></div>
+        <div class="colhead"><span class="n">④</span><span class="t">일정 재확인</span><span class="d">9/1 오후~저녁</span></div>
+        <div class="colhead"><span class="n">⑤</span><span class="t">재선택 제출</span><span class="d">9/1 저녁</span></div>
+        <div class="colhead"><span class="n">⑥</span><span class="t">확정대기</span><span class="d">9/1 저녁~이후</span></div>
+
+        <!-- physical evidence -->
+        <div class="rowlabel">물리적 증거</div>
+        <div class="cell plan"><span class="tag">계획</span>슬롯표·최종 확인 화면의 모든 시각에 <b>KST 기준 명시</b><span class="src">Cal.com</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span>상태 카드 + 진행 타임라인, 남은 시간</div>
+        <div class="cell plan sel"><span class="tag">계획</span>슬롯 버튼마다 <b>“대기 2명” 배지</b>, 내 후보 카드에도 같은 수<span class="src">TidyCal</span></div>
+        <div class="cell none">앱 바깥 — 개인 달력 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell plan"><span class="tag">계획</span>재선택 화면 상단에 <b>원래 희망 요약을 고정</b><span class="src">Setmore</span></div>
+        <div class="cell plan"><span class="tag">계획</span>화면 최상단 <b>상태 배너</b> 한 줄<span class="src">네이버 예약</span></div>
+
+        <!-- customer actions -->
+        <div class="rowlabel">고객 행동</div>
+        <div class="cell">9/3 오후·9/4 오전을 1·2순위로 제출<div class="emo"><b>4</b><span>기대</span></div></div>
+        <div class="cell">앱을 열어 회신 기한과 경과 시간을 읽는다<div class="emo hold"><b>3</b><span>v1 그대로</span></div></div>
+        <div class="cell plan sel"><span class="tag">계획</span>마감을 <b>통보받는</b> 대신, 신청할 때 이미 <b>붐빈다는 걸 보고</b> 3순위를 하나 더 넣어둔다<div class="emo up"><b>4</b><span class="was">3</span><span class="to">→ 4</span></div></div>
+        <div class="cell">개인 일정에서 9/7 오후를 찾는다<div class="emo"><b>4</b><span>안도</span></div></div>
+        <div class="cell">원래 희망을 옆에 두고 9/7 오후로 재선택<div class="emo hold"><b>4</b><span>v1 그대로</span></div></div>
+        <div class="cell">배너 한 줄로 상태를 읽고 앱을 닫는다<div class="emo hold"><b>4</b><span>v1 그대로</span></div></div>
+
+        <div class="line solid">상호작용선</div>
+
+        <!-- frontstage -->
+        <div class="rowlabel">앱이 응답하는 것</div>
+        <div class="cell plan"><span class="tag">계획</span>“9/1 <b>19:00 KST</b>까지 회신” — 기준 시각을 남기지 않는다<span class="src">Cal.com</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span>접수 8/31 19:00 → 검토 대기 · 경과 14시간 · 9/1 19:00까지 회신</div>
+        <div class="cell plan sel"><span class="tag">계획</span>마감 전: <b>“이 슬롯에 2명이 대기 중”</b><br>마감 후: 기존 마감 표시 + 추천 3개 <span style="color:var(--ink-faint)">(유지)</span><span class="src">TidyCal</span></div>
+        <div class="cell none">응답 없음 — 이번 범위 밖</div>
+        <div class="cell plan"><span class="tag">계획</span>이전 희망 1·2순위를 <b>나란히 두고</b> 바꾸게 한다<span class="src">Setmore</span></div>
+        <div class="cell plan"><span class="tag">계획</span><b>검토 대기 · 9/1 19:00까지 회신</b>을 본문 아닌 <b>맨 위 배너</b>로<span class="src">네이버 예약</span></div>
+
+        <div class="line">가시선 — 아래는 고객이 볼 수 없다</div>
+
+        <!-- backstage -->
+        <div class="rowlabel">어드민이 하는 일</div>
+        <div class="cell none">아직 모른다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span>목록이 오래 기다린 순으로 정렬된다</div>
+        <div class="cell plan sel"><span class="tag">계획</span>목록에 <b>“이 슬롯 경합 2명”</b>이 함께 보여, 어느 건을 먼저 확정할지 판단이 선다<span class="src">TidyCal 응용</span></div>
+        <div class="cell none">관여 없음 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell none">아직 모른다 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span>대기 시간 뱃지를 보고 기한 전에 처리한다. 확정은 여전히 사람이 누른다</div>
+
+        <div class="line">내부 상호작용선</div>
+
+        <!-- support -->
+        <div class="rowlabel">시스템</div>
+        <div class="cell">신청·희망·실행기록 저장 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span><code>operation_logs</code>를 본인 것만 읽도록 연다</div>
+        <div class="cell plan sel"><span class="tag">계획 · 손대는 곳</span>슬롯별 <b>대기 신청 수만</b> 세는 집계 뷰 신설. 누가 신청했는지는 열지 않는다<span class="src">정책 SQL 변경</span></div>
+        <div class="cell none">해당 없음</div>
+        <div class="cell">버전 2, 새 접수 순번, 이력 보존 <span style="color:var(--ink-faint)">(유지)</span></div>
+        <div class="cell v1"><span class="tag">v1 완료</span>본인 이력 조회 + 확정 트리거 → 캘린더·초대 메일</div>
+
+        <!-- points -->
+        <div class="rowlabel">지점</div>
+        <div class="cell v1"><span class="tag">해소</span>기한이 있는 대기 <span style="color:var(--ink-faint)">(v1)</span></div>
+        <div class="cell v1"><span class="tag">해소</span>전달 통로가 있다 <span style="color:var(--ink-faint)">(v1)</span></div>
+        <div class="cell plan sel"><span class="tag">완화 → 해소 목표</span>마감이 <b>사후 통보에서 사전 예고로</b> 바뀐다. v1에서 유일하게 닫히지 않은 칸</div>
+        <div class="cell none">—</div>
+        <div class="cell v1"><span class="tag">해소</span>두 번째 대기도 기한이 붙는다 <span style="color:var(--ink-faint)">(v1)</span></div>
+        <div class="cell v1"><span class="tag">해소</span>앱을 열지 않아도 결과가 도착한다 <span style="color:var(--ink-faint)">(v1)</span></div>
+
+      </div>
+    </div>
+
+    <p class="legend">
+      <span><i class="swatch" style="background:var(--ship)"></i>어제 만들어 동작을 확인한 칸 (v1)</span>
+      <span><i class="swatch" style="background:var(--edit)"></i>오늘 새로 만들 칸 (v2 계획, 아직 없음)</span>
+      <span><i class="swatch" style="background:var(--rule-strong)"></i>그대로 두는 칸</span>
+      <span><i class="swatch" style="background:var(--pick)"></i>이번에 닫으려는 구간</span>
+    </p>
+  </section>
+
+  <section>
+    <h2 class="sec">참고한 화면 4건</h2>
+    <p class="sec-note">
+      네 건 모두 D36 Benchmark에서 <b>실제 캡처로 관찰된 것</b>만 골랐다.
+      문서 그림뿐인 서비스(Google·Microsoft·카카오 등)에서 본 것은 쓰지 않았다.
+    </p>
+
+    <div class="refs">
+
+      <div class="ref risk">
+        <p class="k">③ 마감확인 · 핵심</p>
+        <h3>TidyCal — 시간 버튼의 잔여 좌석 표시</h3>
+        <dl>
+          <dt>본 것</dt>
+          <dd>공개 예약 화면에서 <b>각 시간 버튼에 <code>Seats left</code> 잔여 좌석 수</b>가 붙어 있다. 고를 때 이미 남은 자리를 안다.</dd>
+          <dt>가져올 것</dt>
+          <dd>우리는 좌석이 아니라 <b>대기 인원</b>이다. 슬롯 버튼과 내 후보 카드에 <b>“대기 2명”</b>을 붙인다.</dd>
+          <dt>왜</dt>
+          <dd>접수가 점유가 아니라는 우리 규칙을 <b>화면이 처음으로 설명</b>하게 된다. 마감될 것 같으면 3순위를 미리 넣는다.</dd>
+          <dt>손대는 곳</dt>
+          <dd><code>SlotTable.tsx</code> · <code>CustomerPage.tsx</code> · <code>AdminPage.tsx</code> · 정책 SQL</dd>
+          <dt>리스크</dt>
+          <dd><b>넷 중 유일하게 정책 SQL을 건드린다.</b> 개수만 세는 집계를 열고 신원은 닫아둔다. 이 부분이 막히면 어드민 화면에만 먼저 붙인다.</dd>
+          <dt>근거</dt>
+          <dd><a href="https://tidycal.com/team/career-consultations/bookings">tidycal.com/team/career-consultations/bookings</a> · 실제 예약 화면 · 2026-09-08</dd>
+        </dl>
+      </div>
+
+      <div class="ref">
+        <p class="k">⑥ 확정대기</p>
+        <h3>네이버 예약 — 예약 확인증 상단 상태 배너</h3>
+        <dl>
+          <dt>본 것</dt>
+          <dd>상세 화면 <b>맨 위에 상태 배너가 먼저</b> 오고, 그 아래로 일정·인원·안내가 이어진다.</dd>
+          <dt>가져올 것</dt>
+          <dd>지금은 상태가 본문 중간 한 줄이다. <b>“검토 대기 · 9/1 19:00까지 회신”</b>을 화면 최상단 배너로 올린다.</dd>
+          <dt>왜</dt>
+          <dd>⑥의 행동은 “열고 닫기를 반복”이었다. 배너면 <b>한 번 보고 닫는다</b>. ②에서도 같은 화면이라 함께 좋아진다.</dd>
+          <dt>손대는 곳</dt>
+          <dd><code>CustomerPage.tsx</code> 뿐</dd>
+          <dt>근거</dt>
+          <dd><a href="https://help.naver.com/service/11713/contents/3751">help.naver.com · 이용자의 예약하는 방법</a> · 공식 문서 이미지 · 2026-09-08</dd>
+        </dl>
+      </div>
+
+      <div class="ref">
+        <p class="k">⑤ 재선택 제출</p>
+        <h3>Setmore — Summary 고정과 Edit date and time</h3>
+        <dl>
+          <dt>본 것</dt>
+          <dd>입력 화면 내내 <b>Summary에 선택한 날짜·시간이 붙어 있고</b>, <code>Edit date and time</code>으로 되돌아간다.</dd>
+          <dt>가져올 것</dt>
+          <dd>재선택 화면 상단에 <b>원래 희망 1·2순위 요약을 고정</b>한다. 무엇이 왜 막혔는지 보면서 대체를 고른다.</dd>
+          <dt>왜</dt>
+          <dd>④에서 개인 달력을 다녀오는 동안 맥락이 끊긴다. 돌아왔을 때 <b>원래 뭘 골랐었는지</b>가 화면에 남아 있어야 한다.</dd>
+          <dt>손대는 곳</dt>
+          <dd><code>CustomerPage.tsx</code> 재선택 영역</dd>
+          <dt>근거</dt>
+          <dd><a href="https://onboarding.setmore.com/services/5d370f33-49de-4180-b64b-1fd4e71f60a4">onboarding.setmore.com</a> · 실제 예약 화면 · 2026-09-08</dd>
+        </dl>
+      </div>
+
+      <div class="ref">
+        <p class="k">① · ③ 시각 표기</p>
+        <h3>Cal.com — Asia/Seoul 시간대 명시</h3>
+        <dl>
+          <dt>본 것</dt>
+          <dd>예약 화면에 <b><code>Asia/Seoul</code> 시간대와 12/24시간 선택</b>이 늘 떠 있다. Setmore도 <code>South Korea — Seoul</code>을 같은 자리에 둔다.</dd>
+          <dt>가져올 것</dt>
+          <dd>회신 기한·마감 시각·슬롯 시각에 <b>KST 기준을 명시</b>한다. 12/24시간 선택은 만들지 않는다.</dd>
+          <dt>왜</dt>
+          <dd>v1이 시각을 잔뜩 늘렸는데(기한·경과·마감) <b>무슨 시각인지는 어디에도 안 쓰여 있다.</b> 가장 싼 수리다.</dd>
+          <dt>손대는 곳</dt>
+          <dd><code>constants.ts</code> 표기 함수 한 곳</dd>
+          <dt>근거</dt>
+          <dd><a href="https://cal.com/webble/ai-booking-demo">cal.com/webble/ai-booking-demo</a> · 실제 예약 화면 · 2026-09-08</dd>
+        </dl>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec">작업 순서</h2>
+    <p class="sec-note">확실한 것을 먼저 끝내고, 정책 SQL을 건드리는 것을 마지막에 둔다. 앞의 셋만 해도 판은 성립한다.</p>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr><th>순서</th><th>무엇을</th><th>어느 Step</th><th>참고처</th><th>예상</th><th>확실성</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>시각 표기에 KST 명시</td><td>① · ③</td><td>Cal.com</td><td class="num">5분</td><td class="num">확실</td></tr>
+          <tr><td>2</td><td>상태 배너를 최상단으로</td><td>⑥ (② 동반)</td><td>네이버 예약</td><td class="num">10분</td><td class="num">확실</td></tr>
+          <tr><td>3</td><td>재선택 화면에 원래 희망 고정</td><td>⑤</td><td>Setmore</td><td class="num">15분</td><td class="num">확실</td></tr>
+          <tr><td>4</td><td>슬롯별 대기 인원 표시</td><td><b>③ 핵심</b></td><td>TidyCal</td><td class="num">30분</td><td class="num">정책 SQL 의존</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec">고정 규칙은 그대로다</h2>
+    <div class="keep">
+      <ul>
+        <li><b>접수는 점유가 아니다</b> — 대기 인원을 보여줄 뿐, 신청을 막지 않는다. 오히려 이 규칙을 화면이 설명하게 된다.</li>
+        <li><b>확정만 슬롯을 마감한다</b> — 변경 없음.</li>
+        <li><b>확정은 어드민이 수동으로 누른다</b> — 변경 없음. 경합 수는 판단 근거일 뿐 자동 확정을 만들지 않는다.</li>
+        <li><b>대기 수 제한은 기본에 없다</b> — 수를 <em>보여줄</em> 뿐 <em>제한하지</em> 않는다.</li>
+        <li><b>디자인 범위</b> — 배지·배너 모두 기본 HTML 텍스트와 테두리로만 만든다. 아이콘·이미지·애니메이션은 넣지 않는다.</li>
+        <li><b>권한</b> — 남의 신청 <em>개수</em>만 열고 <em>신원</em>은 열지 않는다. <code>service_role</code>은 브라우저에 넣지 않는다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    이 장의 초록 칸은 <b>아직 하나도 만들지 않았다.</b> v1의 보라 칸은 어제 만들어 동작을 확인한 것이다.
+    ③의 감정 3→4는 관찰값이 아니라 기대 효과 가설이며, 만든 뒤 다시 확인한다.
+    ④는 앱 바깥(개인 달력)이라 이번에도 손대지 않는다.
+  </footer>
+</div>
+
+</body>
+</html>
